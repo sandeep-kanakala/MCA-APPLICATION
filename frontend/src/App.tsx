@@ -1,10 +1,13 @@
-// import { useState } from 'react'
-import LoginPage from './pages/Login/login'
+import { Suspense } from "react";
+import { RouterProvider } from "react-router-dom";
+import { router } from "@/routes/routes";
+
 function App() {
-    return (
-        <>
-            <LoginPage />
-        </>
-    )
+  return (
+      <Suspense fallback={<div>Loading...</div>}>
+        <RouterProvider router={router} />
+      </Suspense>
+  );
 }
-export default App
+
+export default App;
