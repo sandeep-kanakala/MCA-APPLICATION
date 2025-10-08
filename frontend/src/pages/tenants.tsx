@@ -12,13 +12,17 @@ interface Account {
 }
 
 export default function Tenantspage() {
-  const [accounts] = useState<Account[]>([
+   const accounts: Account[] = [
     { id: '1', name: 'Linkworks Accounts', path: '/admin', logo: 'W' },
     { id: '2', name: 'LFI India', path: '/app/indiadinai/dashboard', logo: 'W' },
     { id: '3', name: 'Linkworks Accounts', path: '/admin', logo: 'W' },
-  ]);
+  ];
 
   const [activeButton, setActiveButton] = useState<string>('linkworks');
+  const navButtons = [
+    { id: "linkworks", label: "Linkworks Accounts" },
+    { id: "create", label: "Create New Account" },
+  ];
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 md:p-8">
@@ -48,31 +52,22 @@ export default function Tenantspage() {
                 </Button>
               </div>
 
-              <nav className="p-4 space-y-2">
-                <Button
-                  variant="ghost"
-                  className={`w-full justify-start font-medium ${
-                    activeButton === 'linkworks'
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'text-gray-700 hover:bg-blue-100 hover:text-blue-700'
-                  }`}
-                  onClick={() => setActiveButton('linkworks')}
-                >
-                  Linkworks Accounts
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  className={`w-full justify-start font-medium ${
-                    activeButton === 'create'
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'text-gray-700 hover:bg-blue-100 hover:text-blue-700'
-                  }`}
-                  onClick={() => setActiveButton('create')}
-                >
-                  Create New Account
-                </Button>
-              </nav>
+             <nav className="p-4 space-y-2">
+      {navButtons.map((btn) => (
+        <Button
+          key={btn.id}
+          variant="ghost"
+          className={`w-full justify-start font-medium ${
+            activeButton === btn.id
+              ? "bg-blue-100 text-blue-700"
+              : "text-gray-700 hover:bg-blue-100 hover:text-blue-700"
+          }`}
+          onClick={() => setActiveButton(btn.id)}
+        >
+          {btn.label}
+        </Button>
+      ))}
+    </nav>
             </div>
             <div className="w-full lg:w-3/5 bg-white">
               <div className="p-4 md:p-6 border-b border-gray-200">
