@@ -12,7 +12,7 @@ interface Account {
 }
 
 export default function Tenantspage() {
-   const accounts: Account[] = [
+  const accounts: Account[] = [
     { id: '1', name: 'Linkworks Accounts', path: '/admin', logo: 'W' },
     { id: '2', name: 'LFI India', path: '/app/indiadinai/dashboard', logo: 'W' },
     { id: '3', name: 'Linkworks Accounts', path: '/admin', logo: 'W' },
@@ -29,9 +29,9 @@ export default function Tenantspage() {
       <div className="w-full max-w-5xl">
         <Card className="overflow-hidden">
           <div className="flex flex-col lg:flex-row">
-            
+
             <div className="w-full lg:w-2/5 bg-white border-b lg:border-b-0 lg:border-r border-gray-200">
-              
+
               <div className="p-4 border-b border-gray-200 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-12 w-12 bg-blue-600">
@@ -52,22 +52,21 @@ export default function Tenantspage() {
                 </Button>
               </div>
 
-             <nav className="p-4 space-y-2">
-      {navButtons.map((btn) => (
-        <Button
-          key={btn.id}
-          variant="ghost"
-          className={`w-full justify-start font-medium ${
-            activeButton === btn.id
-              ? "bg-blue-100 text-blue-700"
-              : "text-gray-700 hover:bg-blue-100 hover:text-blue-700"
-          }`}
-          onClick={() => setActiveButton(btn.id)}
-        >
-          {btn.label}
-        </Button>
-      ))}
-    </nav>
+              <nav className="p-4 space-y-2">
+                {navButtons.map((btn) => (
+                  <Button
+                    key={btn.id}
+                    variant="ghost"
+                    className={`w-full justify-start font-medium ${activeButton === btn.id
+                        ? "bg-blue-100 text-blue-700"
+                        : "text-gray-700 hover:bg-blue-100 hover:text-blue-700"
+                      }`}
+                    onClick={() => setActiveButton(btn.id)}
+                  >
+                    {btn.label}
+                  </Button>
+                ))}
+              </nav>
             </div>
             <div className="w-full lg:w-3/5 bg-white">
               <div className="p-4 md:p-6 border-b border-gray-200">
