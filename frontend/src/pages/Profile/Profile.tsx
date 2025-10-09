@@ -47,8 +47,8 @@ export default function ProfilePage() {
                   <Label htmlFor="email" className="text-sm font-medium">
                     Email Address
                   </Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  <div className="relative ">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 bg-gray-50">
                       @
                     </span>
                     <Input
@@ -61,8 +61,8 @@ export default function ProfilePage() {
 
                 <div className="space-y-2">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <Label className="text-sm font-medium">Avatar</Label>
-                    <p className="text-sm text-gray-500">
+                    <Label className="text-sm font-medium ">Avatar</Label>
+                    <p className="text-sm  italic">
                       Supported files: .png, .jpg, .jpeg{" "}
                       <span className="text-primary">
                         (Max file size: 10mb)
