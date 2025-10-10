@@ -10,7 +10,7 @@ import {
 import { Input } from "@/components/ui/input"
 import Logo from "@/assets/MultiChoice_logo.svg"
 import { Link } from "react-router-dom";
-import { AppleIcon, GoogleIcon, MetaIcon } from "@/assets/CustomIcons"
+      import { AppleIcon, GoogleIcon, MetaIcon } from "@/assets/CustomIcons"
 
 export default function LoginPage() {
     return (
