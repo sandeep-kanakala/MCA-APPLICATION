@@ -103,10 +103,10 @@ const AppSideBar = () => {
         className="transition-all duration-300"
       >
         <SidebarHeader className="border-b">
-          <SidebarMenu>
-            <SidebarMenuItem>
+          <SidebarMenu className="">
+            <SidebarMenuItem className="">
               <SidebarMenuButton asChild>
-                <button className="flex items-center gap-2 py-2 w-full ">
+                <button className="flex items-center gap-2 py-2 w-full bg-accent ">
                   <img
                     src="assets/sideBar/MenuOption.svg"
                     className="h-7 w-7"
@@ -149,8 +149,8 @@ const AppSideBar = () => {
             <SidebarMenuItem>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <SidebarMenuButton className="cursor-pointer">
-                    <div className="flex items-center justify-between  py-1 hover:bg-accent cursor-pointer transition-colors">
+                  <SidebarMenuButton className="cursor-pointer bg-accent border-t hover:bg-[#D4E2FD] ">
+                    <div className="flex items-center justify-between  py-4 cursor-pointer">
                       <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-700 font-semibold">
                           VY
