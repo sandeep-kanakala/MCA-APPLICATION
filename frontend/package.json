@@ -16,6 +16,17 @@
     "test": "jest",
     "test:coverage": "jest --coverage"
   },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "prettier --write",
+      "eslint --fix",
+      "git add"
+    ],
+    "*.{css,scss,md,json}": [
+      "prettier --write",
+      "git add"
+    ]
+  },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.10",
     "@radix-ui/react-dialog": "^1.1.15",

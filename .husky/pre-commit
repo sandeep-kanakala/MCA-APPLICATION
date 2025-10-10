@@ -1,2 +1,2 @@
 #!/bin/sh
-cd frontend && npm run lint
+cd frontend && npx lint-staged

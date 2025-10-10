@@ -2,7 +2,7 @@
 cd ./frontend || exit 1
 
 echo "🔹 Running lint..."
-npm run lint || exit 1
+npx lint-staged || exit 1
 
 echo "🔹 Running build..."
 npm run build || exit 1
