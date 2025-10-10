@@ -5,17 +5,17 @@ import { AuthGuard } from '@nestjs/passport';
 @Controller('dashboard')
 export class DashboardController {
 
-    constructor(private dashboard:DashboardService) {}
+    constructor(private dashboard: DashboardService) { }
 
 
 
 
     @UseGuards(AuthGuard('jwt'))
-   @Get()
-   getDashboard(@Request() req){
-    const user=req.user;
-    return this.dashboard.getDashboard(user);
-   }
+    @Get()
+    getDashboard(@Request() req) {
+        const user = req.user;
+        return this.dashboard.getDashboard(user);
+    }
 
-   
+
 }
