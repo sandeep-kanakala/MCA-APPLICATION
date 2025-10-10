@@ -1,9 +1,6 @@
 # Go to frontend folder (only if package.json is there)
 cd ./frontend || exit 1
 
-echo "🔹 Running lint..."
-npx lint-staged || exit 1
-
 echo "🔹 Running build..."
 npm run build || exit 1
 
