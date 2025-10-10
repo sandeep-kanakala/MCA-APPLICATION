@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { CloudUpload, Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
+import UploadFile from "@/features/components/uploadFile";
 
 export default function ProfilePage() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
@@ -58,7 +59,6 @@ export default function ProfilePage() {
                     />
                   </div>
                 </div>
-
                 <div className="space-y-2">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <Label className="text-sm font-medium ">Avatar</Label>
@@ -69,18 +69,7 @@ export default function ProfilePage() {
                       </span>
                     </p>
                   </div>
-                  <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center hover:border-gray-300 transition-colors bg-gray-50">
-                    <CloudUpload className="w-8 h-8 mx-auto mb-2 text-primary" />
-                    <p className="text-sm text-gray-600">
-                      <a
-                        href="#"
-                        className=" font-medium underline hover:text-[rgba(39,74,255,0.9)] transition-opacity duration-200 "
-                      >
-                        Click to upload
-                      </a>{" "}
-                      or drag and drop
-                    </p>
-                  </div>
+                  <UploadFile />
                 </div>
 
                 <div className="border-t border-gray-300 -mx-2 pt-2">
