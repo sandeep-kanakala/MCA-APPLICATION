@@ -7,9 +7,14 @@ import { ConfigModule } from '@nestjs/config';
 import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
-   imports: [ConfigModule.forRoot({
-    isGlobal: true,
-  }),AuthModule, PrismaModule, DashboardModule],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+    AuthModule,
+    PrismaModule,
+    DashboardModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
