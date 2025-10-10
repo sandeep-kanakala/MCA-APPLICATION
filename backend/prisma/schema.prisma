@@ -209,15 +209,20 @@ model Team {
 model User {
   id        String     @id @default(cuid())
   tenantId  String
-  email     String
+  email     String   @unique
   firstName String
+  middleName String?
   lastName  String
+  phoneNo   String
+  password  String
   status    UserStatus @default(ACTIVE)
   managerId String?
   timeZone  String?    @db.VarChar(64)
   locale    String?    @db.VarChar(16)
   createdAt DateTime   @default(now())
+  createdBy  String  
   updatedAt DateTime   @updatedAt
+  updatedBy  String?
   deletedAt DateTime?
 
   tenant  Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
