@@ -1,6 +1,7 @@
 import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { LoginDto, SignupDto } from './dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import type { Response } from '@/common/response.interface';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -71,10 +72,11 @@ export class AuthService {
     userId: string,
     email: String,
     tenantId: string,
-  ): Promise<{ access_token: string }> {
+  ): Promise<any> {
     const payload = { sub: userId, email, tenantId };
     const token = await this.jwt.signAsync(payload);
-    return { access_token: token };
+    const response=new ResponseBuilder().build();
+    return { response,access_token: token };
   }
 
   public async validateTokenPayload(userId: string, username: string) {
