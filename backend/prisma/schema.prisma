@@ -43,6 +43,7 @@ model User {
   email     String
   firstName String
   lastName  String
+  password  String
   status    UserStatus @default(ACTIVE)
   roleId    String?
   managerId String?
