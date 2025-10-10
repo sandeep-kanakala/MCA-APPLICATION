@@ -23,14 +23,17 @@ import {
   CircleDollarSign,
   Handbag,
   LayoutDashboard,
+  LogOut,
   ShoppingBag,
   ShoppingCart,
   Users,
   UsersRound,
 } from "lucide-react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 
 const AppSideBar = () => {
+  const [activeItem, setActiveItem] = useState(0);
   // Menu items.
   const menuItems = [
     {
@@ -50,12 +53,12 @@ const AppSideBar = () => {
     },
     {
       title: "Orders",
-      url: "/",
+      url: "#",
       icon: ShoppingCart,
     },
     {
       title: "Products",
-      url: "/",
+      url: "#",
       icon: ShoppingBag,
     },
     {
@@ -65,17 +68,17 @@ const AppSideBar = () => {
     },
     {
       title: "Contacts",
-      url: "/",
+      url: "#",
       icon: Users,
     },
     {
       title: "Opportunities",
-      url: "/",
+      url: "#",
       icon: Handbag,
     },
     {
       title: "Price List",
-      url: "/",
+      url: "#",
       icon: CircleDollarSign,
     },
   ];
@@ -83,15 +86,17 @@ const AppSideBar = () => {
     {
       title: "Account",
       url: "#",
+      icon: Handbag,
     },
     {
       title: "Billing",
       url: "#",
+      icon: Handbag,
     },
     {
       title: "Sign out",
       url: "#",
-      icon: "#",
+      icon: LogOut,
     },
   ];
   return (
@@ -105,16 +110,25 @@ const AppSideBar = () => {
         <SidebarHeader className="border-b">
           <SidebarMenu className="">
             <SidebarMenuItem className="">
-              <SidebarMenuButton asChild>
-                <button className="flex items-center gap-2 py-2 w-full bg-accent ">
+              <SidebarMenuButton
+                asChild
+                className="!bg-transparent hover:!bg-transparent hover:!text-inherit"
+              >
+                <div className="flex items-center gap-2  w-full  ">
                   <img
                     src="assets/sideBar/MenuOption.svg"
                     className="h-7 w-7"
                     alt="icon"
                   />
-
-                  <span className="font-semibold">Multichoice Sales</span>
-                </button>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold text-foreground">
+                      Multichoice Sales
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      v1.0.10
+                    </span>
+                  </div>
+                </div>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -123,34 +137,49 @@ const AppSideBar = () => {
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu className="cursor-pointer ">
-                {menuItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      className="hover:bg-[#D4E2FD] hover:text-[#274AFF]"
-                    >
-                      <Link
-                        to={item.url}
-                        className="flex items-center gap-2  text-gray-700
+                {menuItems.map((item, index: any) => {
+                  const isActive = activeItem === index;
+
+                  return (
+                    <>
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton
+                          asChild
+                          onClick={() => setActiveItem(index)}
+                          className={`
+          ${
+            isActive
+              ? "bg-[#D4E2FD] text-[#274AFF] border-l-4 border-[#274AFF]"
+              : "text-gray-700"
+          }
+          hover:bg-[#D4E2FD] hover:text-[#274AFF] hover:border-l-4 hover:border-[#274AFF]
+          transition-colors duration-200 rounded-none
+        `}
+                        >
+                          <Link
+                            to={item.url}
+                            className="flex items-center gap-2  text-gray-700
                   transition-colors duration-200"
-                      >
-                        <item.icon />
-                        <span className="">{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+                          >
+                            <item.icon />
+                            <span className="">{item.title}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    </>
+                  );
+                })}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
-        <SidebarFooter className="">
+        <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <SidebarMenuButton className="cursor-pointer bg-accent border-t hover:bg-[#D4E2FD] ">
-                    <div className="flex items-center justify-between  py-4 cursor-pointer">
+                  <SidebarMenuButton className="cursor-pointer h-[55px] border-t-2  pt-5 rounded-none bg-accent hover:bg-[#D4E2FD] ">
+                    <div className="flex items-center justify-between h-16  cursor-pointer pb-2">
                       <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-700 font-semibold">
                           VY
@@ -174,13 +203,23 @@ const AppSideBar = () => {
                 <DropdownMenuContent
                   side="top"
                   align="start"
-                  className="bg-white min-w-[var(--radix-dropdown-menu-trigger-width)] shadow-md border rounded-md p-2 cursor-pointer "
+                  className="bg-white  min-w-[var(--radix-dropdown-menu-trigger-width)] shadow-md border rounded-md p-1 cursor-pointer "
                 >
                   {footerItems?.map((footer) => {
                     return (
                       <>
-                        <DropdownMenuItem className="hover:bg-[#D4E2FD] px-2 hover:text-[#274AFF]">
-                          <span>{footer?.title}</span>
+                        <DropdownMenuItem
+                          key={footer?.title}
+                          className="hover:bg-[#D4E2FD] px-2  hover:border-transparent  hover:text-[#274AFF]  "
+                        >
+                          <Link
+                            to={footer.url}
+                            className="flex items-center gap-2  text-gray-700
+                  transition-colors duration-200"
+                          >
+                            <footer.icon />
+                            <span className="">{footer.title}</span>
+                          </Link>
                         </DropdownMenuItem>
                       </>
                     );
