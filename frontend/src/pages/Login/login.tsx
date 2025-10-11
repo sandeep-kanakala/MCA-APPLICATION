@@ -11,8 +11,12 @@ import { Input } from '@/components/ui/input';
 import Logo from '@/assets/MultiChoice_logo.svg';
 import { Link } from 'react-router-dom';
 import { AppleIcon, GoogleIcon, MetaIcon } from '@/assets/CustomIcons';
+import { API_URL, APP_ENV } from '@/config/runtimeConfig';
 
 export default function LoginPage() {
+  console.log('Current ENV:', APP_ENV);
+  console.log('API URL:', API_URL);
+
   return (
     <div className="bg-muted flex min-h-svh flex-col items-center justify-center p-6 md:p-10">
       <div className="w-full max-w-sm md:max-w-4xl">
