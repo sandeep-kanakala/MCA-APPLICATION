@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "cross-env RUNTIME_ENV=uat npm run generate-runtime-env && vite",
+    "build": "cross-env RUNTIME_ENV=development npm run generate-runtime-env && tsc -b && vite build --mode development",
     "build:dev": "cross-env RUNTIME_ENV=development npm run generate-runtime-env && tsc -b && vite build --mode development",
     "build:uat": "cross-env RUNTIME_ENV=uat npm run generate-runtime-env && tsc -b && vite build --mode uat",
     "build:prod": "cross-env RUNTIME_ENV=production npm run generate-runtime-env && tsc -b && vite build --mode production",
