@@ -3,13 +3,13 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { UserRegisterRequest } from './dto/user.register.request';
+import { UserRegisterRequest } from './dto/user.dto';
 import type { Response } from '@/utils/response.builder';
 import { ResponseBuilder } from '@/utils/response.builder';
 import { hashEmail } from '@/utils/ResourceIdGenerator';
 import { passwordEncoder } from './util/password.encoder';
 import { PrismaService } from '@/prisma/prisma.service';
-import { UserUpdateRequest } from './dto/user.update.request';
+import { UserUpdateRequest } from './dto/user.dto';
 import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
@@ -24,7 +24,6 @@ export class UserService {
     token: string,
   ): Promise<Response> {
     const decoded = this.jwtService.decode(token);
-    console.log("decoded", decoded);
     const existingUser = await this.prismaService.user.findFirst({
       where: {
         email: userRegisterRequest.email,

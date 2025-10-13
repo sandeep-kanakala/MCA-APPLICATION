@@ -4,7 +4,7 @@ import { ApplicationDataIntializer } from './ApplicationDataIntializer';
 
 @Global()
 @Module({
-  providers: [PrismaService,ApplicationDataIntializer],
-  exports:[PrismaService]
+  providers: [PrismaService, ApplicationDataIntializer],
+  exports: [PrismaService],
 })
 export class PrismaModule {}

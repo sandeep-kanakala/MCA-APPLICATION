@@ -8,5 +8,5 @@ export const AccessToken = createParamDecorator(
     if (!authHeader || typeof authHeader !== 'string') return undefined;
 
     return authHeader.replace('Bearer ', '');
-  }
+  },
 );

@@ -45,6 +45,6 @@ export class ApplicationDataIntializer implements OnModuleInit {
           role: 'SUPER_ADMIN',
         },
       });
-    } 
+    }
   }
 }

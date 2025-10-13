@@ -5,14 +5,15 @@ import { ZodValidationPipe } from '@anatine/zod-nestjs';
 import dotenv from 'dotenv';
 
 async function bootstrap() {
-  dotenv.config()
-  const app= await NestFactory.create(AppModule);
+  dotenv.config();
+  const app = await NestFactory.create(AppModule);
   app.useGlobalPipes(new ZodValidationPipe());
-
 
   const config = new DocumentBuilder()
     .setTitle('MCA REST API’s')
-    .setDescription('Multichoice secured REST based API’s as per Open API specs.')
+    .setDescription(
+      'Multichoice secured REST based API’s as per Open API specs.',
+    )
     .setVersion('3.0')
     .addBearerAuth(
       {
@@ -26,7 +27,7 @@ async function bootstrap() {
 
   const document = SwaggerModule.createDocument(app, config);
 
-  SwaggerModule.setup('mca/swagger-ui', app, document);
+  SwaggerModule.setup('api/swagger', app, document);
 
   await app.listen(process.env.PORT ?? 8080);
 }

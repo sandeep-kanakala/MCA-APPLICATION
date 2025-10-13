@@ -13,7 +13,7 @@ import { UserModule } from './user/user.module';
     AuthModule,
     PrismaModule,
     DashboardModule,
-    UserModule
+    UserModule,
   ],
 })
 export class AppModule {}

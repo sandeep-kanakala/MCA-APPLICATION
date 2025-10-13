@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { LoginDto, SignupDto } from './dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
@@ -20,38 +24,38 @@ export class AuthService {
 
     const user = await this.prisma.user.findFirst({
       where: {
-        email : dto.email,
+        email: dto.email,
         tenantId: tenantId,
-        deletedAt:null
+        deletedAt: null,
       },
     });
-    if (!user) throw new UnauthorizedException('User not found !')
-    const pwMatches = await bcrypt.compare(dto.password, user.password)
-    if (!pwMatches) throw new UnauthorizedException('Invalid credentials')
+    if (!user) throw new UnauthorizedException('User not found !');
+    const pwMatches = await bcrypt.compare(dto.password, user.password);
+    if (!pwMatches) throw new UnauthorizedException('Invalid credentials');
 
-    return this.signToken(user.id, user.email, user.tenantId);
+    return this.signToken(user.id, user.email, user.tenantId, user.role);
   }
 
   async signToken(
     userId: string,
     email: String,
     tenantId: string,
+    role: string,
   ): Promise<any> {
-    const payload = { sub: userId, email, tenantId };
+    const payload = { userId, email, tenantId, role };
     const token = await this.jwt.signAsync(payload);
-    const response=new ResponseBuilder().build();
-    return { response,access_token: token };
+    const response = new ResponseBuilder().build();
+    return { response, access_token: token };
   }
 
   public async validateTokenPayload(userId: string, username: string) {
-        const userData = await this.prisma.user.findFirst({
-            where: { id: userId, deletedAt: null }
-        });
+    const userData = await this.prisma.user.findFirst({
+      where: { id: userId, deletedAt: null },
+    });
 
-        if (!userData) {
-            throw new UnauthorizedException("Token invalid (or) expired !");
-        }
-        return true
+    if (!userData) {
+      throw new UnauthorizedException('Token invalid (or) expired !');
     }
-
+    return true;
+  }
 }

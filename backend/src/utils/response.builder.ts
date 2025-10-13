@@ -11,7 +11,7 @@ export class ResponseBuilder<T> {
     this.response = {
       statusCode: 200,
       message: 'Success',
-      data:null
+      data: null,
     };
   }
 
