@@ -1,4 +1,8 @@
-import { Response } from "./response.interface";
+export interface Response<T = any> {
+  statusCode: number;
+  message: string;
+  data: T | null;
+}
 
 export class ResponseBuilder<T> {
   private response: Response<T>;

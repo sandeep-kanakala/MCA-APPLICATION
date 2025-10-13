@@ -213,7 +213,7 @@ model User {
   firstName String
   middleName String?
   lastName  String
-  phoneNo   String
+  phoneNo   String?
   password  String
   status    UserStatus @default(ACTIVE)
   managerId String?

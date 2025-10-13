@@ -7,4 +7,3 @@ export class passwordEncoder{
   return hashedPassword;
 }
 }
-

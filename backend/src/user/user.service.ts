@@ -1,35 +1,45 @@
-import {ConflictException, Injectable, NotFoundException} from '@nestjs/common';
-import { UserRegisterRequest } from './payload/user.register.request';
-import type { Response } from '@/common/response.interface';
-import { ResponseBuilder } from '@/common/response.builder';
-import { hashEmail } from '@/common/ResourceIdGenerator';
-import { passwordEncoder } from '@/common/password.encoder';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { UserRegisterRequest } from './dto/user.register.request';
+import type { Response } from '@/utils/response.builder';
+import { ResponseBuilder } from '@/utils/response.builder';
+import { hashEmail } from '@/utils/ResourceIdGenerator';
+import { passwordEncoder } from './util/password.encoder';
 import { PrismaService } from '@/prisma/prisma.service';
-import { UserUpdateRequest } from './payload/user.update.request';
+import { UserUpdateRequest } from './dto/user.update.request';
 import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class UserService {
-  constructor(private readonly prismaService: PrismaService,private readonly jwtService:JwtService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly jwtService: JwtService,
+  ) {}
 
   public async create(
     userRegisterRequest: UserRegisterRequest,
-    token:string
+    token: string,
   ): Promise<Response> {
-    const existingUser = await this.prismaService.user.findUnique({
-      where: { email: userRegisterRequest.email },
+    const decoded = this.jwtService.decode(token);
+    console.log("decoded", decoded);
+    const existingUser = await this.prismaService.user.findFirst({
+      where: {
+        email: userRegisterRequest.email,
+        tenantId: decoded.tenantId,
+      },
     });
 
     if (existingUser) {
       throw new ConflictException('Email already exists!');
     }
 
-    const decoded=this.jwtService.decode(token)
     const id = hashEmail(userRegisterRequest.email);
     const password = await passwordEncoder.hashPassword(
       userRegisterRequest.password,
     );
-
     const data = await this.prismaService.user.create({
       data: {
         id: id,
@@ -39,17 +49,18 @@ export class UserService {
         phoneNo: userRegisterRequest.phoneNo,
         email: userRegisterRequest.email,
         password: password,
-        createdBy:decoded.userName,
+        createdBy: decoded.email,
         tenant: {
-        connect: { id: decoded.tenantId },
-      }
+          connect: { id: decoded.tenantId },
+        },
+        role: userRegisterRequest.role,
       },
       select: {
-          id: true,
-          email: true,
-          tenantId: true,
-          createdAt: true
-        }
+        id: true,
+        email: true,
+        tenantId: true,
+        createdAt: true,
+      },
     });
 
     return new ResponseBuilder()
@@ -57,17 +68,17 @@ export class UserService {
       .withMessage('new user created!')
       .withData(data)
       .build();
-  }   
+  }
 
   public async update(
     id: string,
     userUpdateRequest: UserUpdateRequest,
-    token:string
+    token: string,
   ): Promise<Response> {
-    const decoded=this.jwtService.decode(token)
+    const decoded = this.jwtService.decode(token);
     const updatedUser = await this.prismaService.user.update({
       where: { id: id },
-      data:{...userUpdateRequest,updatedBy:decoded.userName}
+      data: { ...userUpdateRequest, updatedBy: decoded.userName },
     });
     if (updatedUser) {
       return new ResponseBuilder().build();
@@ -109,7 +120,7 @@ export class UserService {
     throw new NotFoundException('User not found!');
   }
 
-  public async delete(id: string,token:string): Promise<Response> {
+  public async delete(id: string, token: string): Promise<Response> {
     const deletedUser = await this.prismaService.user.findFirst({
       where: { id: id, deletedAt: null },
     });

@@ -1,12 +1,10 @@
 import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { LoginDto, SignupDto } from './dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import type { Response } from '@/common/response.interface';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { passwordEncoder } from '../common/password.encoder';
-import { ResponseBuilder } from '@/common/response.builder';
+import { ResponseBuilder } from '@/utils/response.builder';
 
 @Injectable()
 export class AuthService {
@@ -16,49 +14,15 @@ export class AuthService {
     private config: ConfigService,
   ) {}
 
-  async signup(dto: SignupDto) {
-    try {
-      const tenantId = this.config.get<string>('TENANT_ID');
-      if (!tenantId) throw new Error('TENANT_ID not found in config');
-
-      const hashedPassword = await passwordEncoder.hashPassword(dto.password)
-      const user = await this.prisma.user.create({
-        data: {
-          firstName:"",
-          lastName:"",
-          createdBy:"",
-          phoneNo:"",
-          email: dto.email,
-          password: hashedPassword,
-          tenantId,
-        },
-        select: {
-          id: true,
-          email: true,
-          tenantId: true,
-          createdAt: true
-        }
-      })
-      return new ResponseBuilder().withMessage("User created successfully").withData(user).build();
-    } catch (error) {
-      if (error.code === 'P2002') {
-        throw new ForbiddenException('Email already exists');
-      }
-      throw error;
-    }
-  }
-
   async signin(dto: LoginDto) {
     const tenantId = this.config.get<string>('TENANT_ID');
     if (!tenantId) throw new Error('TENANT_ID not found in config');
 
-    const user = await this.prisma.user.findUnique({
+    const user = await this.prisma.user.findFirst({
       where: {
-        deletedAt:null,
-        email_tenantId: {
-          email: dto.email,
-          tenantId,
-        },
+        email : dto.email,
+        tenantId: tenantId,
+        deletedAt:null
       },
     });
     if (!user) throw new UnauthorizedException('User not found !')

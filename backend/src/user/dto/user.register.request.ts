@@ -8,7 +8,8 @@ const UserRegisterRequestSchema = z.object({
   phoneNo:z.string(),
   email:z.string().email("Invalid email address"),
   password:z.string().regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/,
-    "Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character.")
+    "Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character."),
+  role: z.enum(["USER", "SUPER_ADMIN", "ADMIN"]),
 })
 
 export class UserRegisterRequest extends createZodDto(UserRegisterRequestSchema){}
