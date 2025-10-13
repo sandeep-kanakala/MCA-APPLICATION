@@ -1,5 +1,8 @@
-# Go to frontend folder (only if package.json is there)
-cd ./frontend || exit 1
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Go to frontend folder
+cd frontend || exit 1
 
 echo "🔹 Running build..."
 npm run build || exit 1
