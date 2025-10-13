@@ -28,7 +28,7 @@ const Error404: React.FC = () => {
 
       <button
         onClick={() => navigate('/')}
-        className="mt-8 px-6 py-3 rounded-2xl bg-blue-600 text-white font-medium hover:bg-blue-700 transition-all shadow-md"
+        className="mt-8 cursor-pointer px-6 py-3 rounded-2xl bg-blue-600 text-white font-medium hover:bg-blue-700 transition-all shadow-md"
       >
         Go Home
       </button>

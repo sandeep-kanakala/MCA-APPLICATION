@@ -1,9 +1,9 @@
-import { configureStore } from "@reduxjs/toolkit";
-import userReducer from "../features/redux/slice";
+import { configureStore } from '@reduxjs/toolkit';
+import globalReducer from '../features/redux/slice';
 
 const appStore = configureStore({
   reducer: {
-    counter: userReducer, // sample example for reducer
+    global: globalReducer, // sample example for reducer
   },
 });
 export default appStore;
