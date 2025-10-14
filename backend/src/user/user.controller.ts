@@ -10,7 +10,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { UserRegisterRequest } from './dto/user.dto';
+import { UserRegisterRequestDto, UserUpdateRequestDto } from './dto/user.dto';
 import type { Response } from '@/utils/response.builder';
 import { UserService } from './user.service';
 import { UserUpdateRequest } from './dto/user.dto';
@@ -30,23 +30,26 @@ export class UserController {
   @UseGuards(RolesGuard)
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @Post('register')
-  @ApiOperation({ summary: 'User Registration', description: 'Register a new user' })
+  @ApiOperation({
+    summary: 'User Registration',
+    description: 'Register a new user',
+  })
   @ApiBody({
-    type: UserRegisterRequest,
+    type: UserRegisterRequestDto,
     examples: {
       example: {
         summary: 'User-I',
         value: {
-          firstName: "John",
-          middleName: "A",
-          lastName: "Doe",
-          phoneNo: "1234567890",
-          email: "john@gmail.com",
-          password: "john@1234",
-          role: "USER"
-        }
-      }
-    }
+          firstName: 'John',
+          middleName: 'A',
+          lastName: 'Doe',
+          phoneNo: '1234567890',
+          email: 'john@gmail.com',
+          password: 'john@1234',
+          role: 'USER',
+        },
+      },
+    },
   })
   public async register(
     @Body() userRegisterRequest: UserRegisterRequest,
@@ -57,7 +60,10 @@ export class UserController {
 
   @HttpCode(HttpStatus.OK)
   @Get()
-  @ApiOperation({ summary: 'Get All Users', description: 'Retrieve a list of all users' })
+  @ApiOperation({
+    summary: 'Get All Users',
+    description: 'Retrieve a list of all users',
+  })
   public async getList(): Promise<Response> {
     return this.userService.getAll();
   }
@@ -66,31 +72,37 @@ export class UserController {
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Get('id')
-  @ApiOperation({ summary: 'Get User by ID', description: 'Retrieve user details by user ID' })
+  @ApiOperation({
+    summary: 'Get User by ID',
+    description: 'Retrieve user details by user ID',
+  })
   public async getUser(@Query('id') id: string): Promise<Response> {
     return this.userService.getUserById(id);
   }
 
   @HttpCode(HttpStatus.OK)
   @Patch('update')
-  @ApiOperation({ summary: 'Update User', description: 'Update user details by user ID' })
+  @ApiOperation({
+    summary: 'Update User',
+    description: 'Update user details by user ID',
+  })
   @ApiBody({
-    type: UserUpdateRequest,
+    type: UserUpdateRequestDto,
     examples: {
       example: {
         summary: 'User-I',
         value: {
-          firstName: "John",
-          middleName: "Addam",
-          lastName: "Doe",
-          phoneNo: "1234567890"
-        }
-      }
-    }
+          firstName: 'John',
+          middleName: 'Addam',
+          lastName: 'Doe',
+          phoneNo: '1234567890',
+        },
+      },
+    },
   })
   public async update(
     @Query('id') id: string,
-    @Body() userUpdateRequest: UserUpdateRequest,
+    @Body() userUpdateRequest: UserUpdateRequestDto,
     @AccessToken() token: string,
   ): Promise<Response> {
     return this.userService.update(id, userUpdateRequest, token);
@@ -98,7 +110,10 @@ export class UserController {
 
   @HttpCode(HttpStatus.OK)
   @Delete('delete')
-  @ApiOperation({ summary: 'Delete User', description: 'Delete user by user ID' })
+  @ApiOperation({
+    summary: 'Delete User',
+    description: 'Delete user by user ID',
+  })
   public async delete(
     @Query('id') id: string,
     @AccessToken() token: string,

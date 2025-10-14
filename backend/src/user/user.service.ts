@@ -1,155 +1,251 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
+  InternalServerErrorException,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { UserRegisterRequest } from './dto/user.dto';
-import type { Response } from '@/utils/response.builder';
+import { PrismaService } from '@/prisma/prisma.service';
+import { JwtService } from '@nestjs/jwt';
+import { UserRegisterRequestDto, UserUpdateRequestDto } from './dto/user.dto';
 import { ResponseBuilder } from '@/utils/response.builder';
 import { hashEmail } from '@/utils/ResourceIdGenerator';
 import { passwordEncoder } from './util/password.encoder';
-import { PrismaService } from '@/prisma/prisma.service';
-import { UserUpdateRequest } from './dto/user.dto';
-import { JwtService } from '@nestjs/jwt';
-import { UserStatus } from '@prisma/client';
-import { Role } from '@prisma/client';
+import { IUserTokenPayload } from '~/interface/userToken.interface';
+import { UserStatus, Role } from '@prisma/client';
+import type { Response } from '@/utils/response.builder';
 
 @Injectable()
 export class UserService {
+  private readonly logger = new Logger(UserService.name);
+
   constructor(
     private readonly prismaService: PrismaService,
     private readonly jwtService: JwtService,
   ) {}
 
-  public async create(
-    userRegisterRequest: UserRegisterRequest,
+  async create(
+    userRegisterRequest: UserRegisterRequestDto,
     token: string,
   ): Promise<Response> {
-    const decoded = this.jwtService.decode(token);
-    const existingUser = await this.prismaService.user.findFirst({
-      where: {
-        email: userRegisterRequest.email,
-        tenantId: decoded.tenantId,
-      },
-    });
+    try {
+      const decoded = this.decodeToken(token);
 
-    if (existingUser) {
-      throw new ConflictException('Email already exists!');
-    }
-
-    const id = hashEmail(userRegisterRequest.email);
-    const password = await passwordEncoder.hashPassword(
-      userRegisterRequest.password,
-    );
-    const data = await this.prismaService.user.create({
-      data: {
-        id: id,
-        firstName: userRegisterRequest.firstName,
-        middleName: userRegisterRequest.middleName,
-        lastName: userRegisterRequest.lastName,
-        phoneNo: userRegisterRequest.phoneNo,
-        email: userRegisterRequest.email,
-        password: password,
-        createdBy: decoded.email,
-        tenant: {
-          connect: { id: decoded.tenantId },
+      const existingUser = await this.prismaService.user.findFirst({
+        where: {
+          email: userRegisterRequest.email,
+          tenantId: decoded.tenantId,
         },
-        role: userRegisterRequest.role as Role,
-      },
-      select: {
-        id: true,
-        email: true,
-        tenantId: true,
-        createdAt: true,
-      },
-    });
+      });
 
-    return new ResponseBuilder()
-      .withStatusCode(201)
-      .withMessage('new user created!')
-      .withData(data)
-      .build();
+      if (existingUser) {
+        throw new ConflictException('Email already exists.');
+      }
+
+      const id = hashEmail(userRegisterRequest.email);
+      const password = await passwordEncoder.hashPassword(
+        userRegisterRequest.password,
+      );
+
+      const newUser = await this.prismaService.user.create({
+        data: {
+          id,
+          firstName: userRegisterRequest.firstName.trim(),
+          middleName: userRegisterRequest.middleName?.trim() || null,
+          lastName: userRegisterRequest.lastName.trim(),
+          phoneNo: userRegisterRequest.phoneNo?.trim(),
+          email: userRegisterRequest.email.toLowerCase().trim(),
+          password,
+          createdBy: decoded.email,
+          tenant: { connect: { id: decoded.tenantId } },
+          role: userRegisterRequest.role as Role,
+        },
+        select: { id: true, email: true, tenantId: true, createdAt: true },
+      });
+
+      this.logger.log(`User created successfully: ${newUser.email}`);
+
+      return new ResponseBuilder()
+        .withStatusCode(201)
+        .withMessage('User created successfully.')
+        .withData(newUser)
+        .build();
+    } catch (error) {
+      this.handleError(error, 'Error creating user');
+    }
   }
 
-  public async update(
+  async update(
     id: string,
-    userUpdateRequest: UserUpdateRequest,
+    userUpdateRequest: UserUpdateRequestDto,
     token: string,
   ): Promise<Response> {
-    const decoded: any = this.jwtService.decode(token);
+    try {
+      const decoded = this.decodeToken(token);
 
-    const existingUser = await this.prismaService.user.findFirst({
-      where: { id: id, status: UserStatus.ACTIVE },
-    });
+      const existingUser = await this.prismaService.user.findFirst({
+        where: { id, status: UserStatus.ACTIVE },
+      });
 
-    if (!existingUser) {
-      throw new NotFoundException('User not found!');
-    }
+      if (!existingUser) {
+        throw new NotFoundException('User not found.');
+      }
 
-    const updatedUser = await this.prismaService.user.update({
-      where: { id: id },
-      data: { ...userUpdateRequest, updatedBy: decoded.userName },
-    });
-
-    return new ResponseBuilder().build();
-  }
-
-  public async getAll(): Promise<Response> {
-    const usersData = await this.prismaService.user.findMany({
-      where: { status: UserStatus.ACTIVE },
-      select: {
-        id: true,
-        middleName: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        phoneNo: true,
-        role: true,
-      },
-    });
-
-    return new ResponseBuilder().withData(usersData).build();
-  }
-
-  public async getUserById(id: string) {
-    const user = await this.prismaService.user.findUnique({
-      where: { id: id, status: UserStatus.ACTIVE },
-      select: {
-        middleName: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        phoneNo: true,
-        role: true,
-      },
-    });
-
-    if (user) {
-      return new ResponseBuilder().withData(user).build();
-    }
-    throw new NotFoundException('User not found!');
-  }
-
-  public async delete(id: string, token: string): Promise<Response> {
-    const decoded = this.jwtService.decode(token);
-    const deletedUser = await this.prismaService.user.findFirst({
-      where: { id: id, status:UserStatus.ACTIVE },
-    });
-
-    if (deletedUser) {
-      const updated = await this.prismaService.user.update({
-        where: { id: id},
+      const updatedUser = await this.prismaService.user.update({
+        where: { id },
         data: {
-          deletedAt: new Date().toISOString(),
+          ...userUpdateRequest,
+          updatedBy: decoded.email,
+          updatedAt: new Date(),
+        },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          phoneNo: true,
+          role: true,
+          updatedAt: true,
+        },
+      });
+
+      this.logger.log(`User updated successfully: ${updatedUser.email}`);
+
+      return new ResponseBuilder()
+        .withMessage('User updated successfully.')
+        .withData(updatedUser)
+        .build();
+    } catch (error) {
+      this.handleError(error, 'Error updating user');
+    }
+  }
+
+  async getAll(page = 1, limit = 10): Promise<Response> {
+    try {
+      const pageNumber = Math.max(Number(page) || 1, 1);
+      const pageSize = Math.max(Number(limit) || 10, 1);
+      const skip = (pageNumber - 1) * pageSize;
+
+      const [totalCount, users] = await Promise.all([
+        this.prismaService.user.count({
+          where: { status: UserStatus.ACTIVE },
+        }),
+        this.prismaService.user.findMany({
+          where: { status: UserStatus.ACTIVE },
+          select: {
+            id: true,
+            firstName: true,
+            middleName: true,
+            lastName: true,
+            email: true,
+            phoneNo: true,
+            role: true,
+          },
+          skip,
+          take: pageSize,
+          orderBy: { createdAt: 'desc' },
+        }),
+      ]);
+
+      return new ResponseBuilder()
+        .withMessage('Users fetched successfully.')
+        .withData({
+          total: totalCount,
+          page: pageNumber,
+          limit: pageSize,
+          totalPages: Math.ceil(totalCount / pageSize),
+          data: users,
+        })
+        .build();
+    } catch (error) {
+      this.handleError(error, 'Error fetching user list');
+    }
+  }
+
+  async getUserById(userId: string): Promise<Response> {
+    try {
+      if (!userId || typeof userId !== 'string' || userId.trim() === '') {
+        throw new BadRequestException('Invalid user ID.');
+      }
+
+      const user = await this.prismaService.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          firstName: true,
+          middleName: true,
+          lastName: true,
+          email: true,
+          phoneNo: true,
+          role: true,
+          status: true,
+        },
+      });
+
+      if (!user || user.status !== UserStatus.ACTIVE) {
+        throw new NotFoundException('User not found or inactive.');
+      }
+
+      return new ResponseBuilder()
+        .withMessage('User fetched successfully.')
+        .withData(user)
+        .build();
+    } catch (error) {
+      this.handleError(error, 'Error fetching user by ID');
+    }
+  }
+
+  async delete(id: string, token: string): Promise<Response> {
+    try {
+      const decoded = this.decodeToken(token);
+
+      const user = await this.prismaService.user.findFirst({
+        where: { id, status: UserStatus.ACTIVE },
+      });
+
+      if (!user) {
+        throw new NotFoundException('User not found.');
+      }
+
+      await this.prismaService.user.update({
+        where: { id },
+        data: {
+          deletedAt: new Date(),
           status: UserStatus.INACTIVE,
           updatedBy: decoded.email,
         },
       });
-      if (updated.status.startsWith('IN')) {
-        return new ResponseBuilder().withMessage('USER DELETED').build();
-      }
+
+      this.logger.warn(`User deleted: ${id}`);
+
+      return new ResponseBuilder()
+        .withMessage('User deleted successfully.')
+        .build();
+    } catch (error) {
+      this.handleError(error, 'Error deleting user');
+    }
+  }
+
+  private decodeToken(token: string): IUserTokenPayload {
+    const decoded: IUserTokenPayload = this.jwtService.decode(token);
+    if (!decoded || !decoded.email) {
+      throw new BadRequestException('Invalid or expired token.');
+    }
+    return decoded;
+  }
+
+  private handleError(error: unknown, message: string): never {
+    if (error instanceof Error) {
+      this.logger.error(`${message}: ${error.message}`, error.stack);
+    } else {
+      this.logger.error(`${message}: ${JSON.stringify(error)}`);
     }
 
-    throw new NotFoundException('User not found!');
+    if (error instanceof BadRequestException) throw error;
+    if (error instanceof ConflictException) throw error;
+    if (error instanceof NotFoundException) throw error;
+
+    throw new InternalServerErrorException('Internal server error.');
   }
 }
