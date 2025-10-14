@@ -47,15 +47,4 @@ export class AuthService {
     const response = new ResponseBuilder().build();
     return { response, access_token: token };
   }
-
-  public async validateTokenPayload(userId: string, username: string) {
-    const userData = await this.prisma.user.findFirst({
-      where: { id: userId, status:UserStatus.ACTIVE},
-    });
-
-    if (!userData) {
-      throw new UnauthorizedException('Token invalid (or) expired !');
-    }
-    return true;
-  }
 }

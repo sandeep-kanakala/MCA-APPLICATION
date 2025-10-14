@@ -17,7 +17,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   validate(payload: any) {
-    const { userId, userName } = payload;
-    return this.authService.validateTokenPayload(userId, userName);
+    // console.log('JWT Payload:', payload);
+    
+    // This object will be attached to req.user
+    return { 
+      ...payload
+    }
   }
 }
