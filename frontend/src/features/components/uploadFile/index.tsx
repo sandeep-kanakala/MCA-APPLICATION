@@ -1,14 +1,10 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import {
-  Dropzone,
-  DropzoneContent,
-  DropzoneEmptyState,
-} from "@/components/ui/shadcn-io/dropzone";
-import { cn } from "@/lib/utils";
-import { CloudUploadIcon } from "@/assets/CustomIcons";
-import type { FileRejection } from "react-dropzone";
+import { useState } from 'react';
+import { Dropzone, DropzoneContent, DropzoneEmptyState } from '@/components/ui/shadcn-io/dropzone';
+import { cn } from '@/lib/utils';
+import { CloudUploadIcon } from '@/assets/CustomIcons';
+import type { FileRejection } from 'react-dropzone';
 
 interface UploadFileProps {
   accept?: { [key: string]: string[] };
@@ -36,18 +32,11 @@ const UploadFile = ({
   };
 
   const customEmptyContent = (
-    <div
-      className={cn(
-        "flex flex-col items-center justify-center space-y-2",
-        className
-      )}
-    >
+    <div className={cn('flex flex-col items-center justify-center space-y-2', className)}>
       <CloudUploadIcon className="!w-6 !h-6 text-gray-600" />
       <p className="text-sm font-medium text-gray-600">
-        <span className="underline hover:text-blue-600 cursor-pointer">
-          Click to upload
-        </span>{" "}
-        or drag and drop
+        <span className="underline hover:text-blue-600 cursor-pointer">Click to upload</span> or
+        drag and drop
       </p>
     </div>
   );
@@ -71,8 +60,8 @@ const UploadFile = ({
       maxSize={maxSize}
       onDrop={handleDrop}
       className={cn(
-        "border-2 border-dashed border-gray-200 rounded-lg p-4 text-center hover:border-gray-300 transition-colors bg-gray-50 min-h-[100px] flex items-center justify-center",
-        className
+        'border-2 border-dashed border-gray-200 rounded-lg p-4 text-center hover:border-gray-300 transition-colors bg-gray-50 min-h-[100px] flex items-center justify-center',
+        className,
       )}
       src={file ? [file] : undefined}
     >

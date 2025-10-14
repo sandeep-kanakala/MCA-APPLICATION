@@ -7,7 +7,7 @@
     "dir": "../.husky"
   },
   "scripts": {
-    "dev": "cross-env RUNTIME_ENV=uat npm run generate-runtime-env && vite",
+    "dev": "cross-env RUNTIME_ENV=development npm run generate-runtime-env && vite",
     "build": "cross-env RUNTIME_ENV=development npm run generate-runtime-env && tsc -b && vite build --mode development",
     "build:dev": "cross-env RUNTIME_ENV=development npm run generate-runtime-env && tsc -b && vite build --mode development",
     "build:uat": "cross-env RUNTIME_ENV=uat npm run generate-runtime-env && tsc -b && vite build --mode uat",
@@ -20,7 +20,8 @@
     "format": "prettier --write .",
     "prepare": "cd .. && husky install",
     "test": "jest",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "pre-commit": "lint-staged --allow-empty --concurrent false"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.10",
