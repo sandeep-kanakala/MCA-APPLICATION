@@ -18,7 +18,6 @@ import type { Response } from '@/utils/response.builder';
 
 @Injectable()
 export class UserService {
-  // private readonly logger = new Logger(UserService.name);
 
   constructor(
     private readonly prismaService: PrismaService,
