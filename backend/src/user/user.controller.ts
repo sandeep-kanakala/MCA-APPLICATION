@@ -14,7 +14,7 @@ import { UserRegisterRequest } from './dto/user.dto';
 import type { Response } from '@/utils/response.builder';
 import { UserService } from './user.service';
 import { UserUpdateRequest } from './dto/user.dto';
-import { ApiBearerAuth, ApiOperation, ApiBody, ApiResponse } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiBody } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { AccessToken } from '@/utils/AuthTokenUtils';
 import { RolesGuard } from '@/auth/guards/roles.guard';
@@ -27,7 +27,7 @@ export class UserController {
   constructor(private readonly userService: UserService) { }
 
   @HttpCode(HttpStatus.CREATED)
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @Post('register')
   @ApiOperation({ summary: 'User Registration', description: 'Register a new user' })
@@ -63,6 +63,8 @@ export class UserController {
   }
 
   @HttpCode(HttpStatus.OK)
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
   @Get('id')
   @ApiOperation({ summary: 'Get User by ID', description: 'Retrieve user details by user ID' })
   public async getUser(@Query('id') id: string): Promise<Response> {

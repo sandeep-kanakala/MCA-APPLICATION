@@ -33,18 +33,29 @@ export class AuthService {
     const pwMatches = await bcrypt.compare(dto.password, user.password);
     if (!pwMatches) throw new UnauthorizedException('Invalid credentials');
 
-    return this.signToken(user.id, user.email, user.tenantId, user.role);
+    return this.signToken(user.id, user.email, user.tenantId);
   }
 
   async signToken(
     userId: string,
     email: String,
     tenantId: string,
-    role: string,
   ): Promise<any> {
-    const payload = { userId, email, tenantId, role };
+    const payload = { userId, email, tenantId};
     const token = await this.jwt.signAsync(payload);
     const response = new ResponseBuilder().build();
     return { response, access_token: token };
+  }
+
+
+  public async validateTokenPayload(userId: string) {
+    const userData = await this.prisma.user.findFirst({
+      where: { id: userId, status:UserStatus.ACTIVE},
+    });
+
+    if (!userData) {
+      throw new UnauthorizedException('Token invalid (or) expired !');
+    }
+    return userData;
   }
 }
