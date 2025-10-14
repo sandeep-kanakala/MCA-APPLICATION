@@ -63,7 +63,7 @@ export class UserService {
         createdAt: true,
       },
     });
-    
+
     return new ResponseBuilder()
       .withStatusCode(201)
       .withMessage('new user created!')
@@ -77,19 +77,26 @@ export class UserService {
     token: string,
   ): Promise<Response> {
     const decoded: any = this.jwtService.decode(token);
+
+    const existingUser = await this.prismaService.user.findFirst({
+      where: { id: id, status: UserStatus.ACTIVE },
+    });
+
+    if (!existingUser) {
+      throw new NotFoundException('User not found!');
+    }
+
     const updatedUser = await this.prismaService.user.update({
       where: { id: id },
       data: { ...userUpdateRequest, updatedBy: decoded.userName },
     });
-    if (updatedUser) {
-      return new ResponseBuilder().build();
-    }
-    throw new NotFoundException('User not found!');
+
+    return new ResponseBuilder().build();
   }
 
   public async getAll(): Promise<Response> {
     const usersData = await this.prismaService.user.findMany({
-      where: { deletedAt: null },
+      where: { status: UserStatus.ACTIVE },
       select: {
         id: true,
         middleName: true,
@@ -97,7 +104,7 @@ export class UserService {
         lastName: true,
         email: true,
         phoneNo: true,
-        role:true
+        role: true,
       },
     });
 
@@ -106,14 +113,14 @@ export class UserService {
 
   public async getUserById(id: string) {
     const user = await this.prismaService.user.findUnique({
-      where: { id: id, deletedAt: null },
+      where: { id: id, status: UserStatus.ACTIVE },
       select: {
         middleName: true,
         firstName: true,
         lastName: true,
         email: true,
         phoneNo: true,
-        role:true
+        role: true,
       },
     });
 
@@ -124,16 +131,21 @@ export class UserService {
   }
 
   public async delete(id: string, token: string): Promise<Response> {
+    const decoded = this.jwtService.decode(token);
     const deletedUser = await this.prismaService.user.findFirst({
-      where: { id: id, deletedAt: null },
+      where: { id: id, status:UserStatus.ACTIVE },
     });
 
     if (deletedUser) {
       const updated = await this.prismaService.user.update({
-        where: { id: id, deletedAt: null },
-        data: { deletedAt: new Date().toISOString(), status: UserStatus.INACTIVE },
+        where: { id: id},
+        data: {
+          deletedAt: new Date().toISOString(),
+          status: UserStatus.INACTIVE,
+          updatedBy: decoded.email,
+        },
       });
-      if (updated.deletedAt != null) {
+      if (updated.status.startsWith('IN')) {
         return new ResponseBuilder().withMessage('USER DELETED').build();
       }
     }

@@ -6,7 +6,7 @@ const UserRegisterRequestSchema = z.object({
   firstName: z.string().min(3, 'First name is required').max(20),
   middleName: z.string().optional(),
   lastName: z.string().min(3, 'Last name is required').max(20),
-  phoneNo: z.string(),
+  phoneNo: z.string().regex(/^\d{10,15}$/,"Invalid phone number").optional(),
   email: z.string().email('Invalid email address'),
   password: z
     .string()
@@ -28,7 +28,7 @@ const UserUpdateRequestSchema = z.object({
   middleName: z.string().optional(),
   lastName: z.string().min(3, 'Last name is required').max(20).optional(),
   phoneNo: z.string().optional(),
-  role: z.enum(['USER', 'SUPER_ADMIN', 'ADMIN']),
+  role: z.enum(['USER', 'SUPER_ADMIN', 'ADMIN']).optional(),
 });
 
 export class UserUpdateRequest extends createZodDto(UserUpdateRequestSchema) {}

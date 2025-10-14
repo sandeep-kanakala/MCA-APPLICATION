@@ -1,14 +1,14 @@
 import {
-  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { LoginDto, SignupDto } from './dto';
+import { LoginDto} from './dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { ResponseBuilder } from '@/utils/response.builder';
+import { UserStatus } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -26,7 +26,7 @@ export class AuthService {
       where: {
         email: dto.email,
         tenantId: tenantId,
-        deletedAt: null,
+        status:UserStatus.ACTIVE
       },
     });
     if (!user) throw new UnauthorizedException('User not found !');
@@ -50,7 +50,7 @@ export class AuthService {
 
   public async validateTokenPayload(userId: string, username: string) {
     const userData = await this.prisma.user.findFirst({
-      where: { id: userId, deletedAt: null },
+      where: { id: userId, status:UserStatus.ACTIVE},
     });
 
     if (!userData) {
