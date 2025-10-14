@@ -5,18 +5,16 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  Param,
   Patch,
   Post,
   Query,
-  Request,
   UseGuards,
 } from '@nestjs/common';
 import { UserRegisterRequest } from './dto/user.dto';
 import type { Response } from '@/utils/response.builder';
 import { UserService } from './user.service';
 import { UserUpdateRequest } from './dto/user.dto';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { AccessToken } from '@/utils/AuthTokenUtils';
 

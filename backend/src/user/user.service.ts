@@ -11,6 +11,8 @@ import { passwordEncoder } from './util/password.encoder';
 import { PrismaService } from '@/prisma/prisma.service';
 import { UserUpdateRequest } from './dto/user.dto';
 import { JwtService } from '@nestjs/jwt';
+import { UserStatus } from '@prisma/client';
+import { Role } from '@prisma/client';
 
 @Injectable()
 export class UserService {
@@ -52,7 +54,7 @@ export class UserService {
         tenant: {
           connect: { id: decoded.tenantId },
         },
-        role: userRegisterRequest.role,
+        role: userRegisterRequest.role as Role,
       },
       select: {
         id: true,
@@ -61,7 +63,7 @@ export class UserService {
         createdAt: true,
       },
     });
-
+    
     return new ResponseBuilder()
       .withStatusCode(201)
       .withMessage('new user created!')
@@ -74,7 +76,7 @@ export class UserService {
     userUpdateRequest: UserUpdateRequest,
     token: string,
   ): Promise<Response> {
-    const decoded = this.jwtService.decode(token);
+    const decoded: any = this.jwtService.decode(token);
     const updatedUser = await this.prismaService.user.update({
       where: { id: id },
       data: { ...userUpdateRequest, updatedBy: decoded.userName },
@@ -95,6 +97,7 @@ export class UserService {
         lastName: true,
         email: true,
         phoneNo: true,
+        role:true
       },
     });
 
@@ -110,6 +113,7 @@ export class UserService {
         lastName: true,
         email: true,
         phoneNo: true,
+        role:true
       },
     });
 
@@ -127,7 +131,7 @@ export class UserService {
     if (deletedUser) {
       const updated = await this.prismaService.user.update({
         where: { id: id, deletedAt: null },
-        data: { deletedAt: new Date().toISOString() },
+        data: { deletedAt: new Date().toISOString(), status: UserStatus.INACTIVE },
       });
       if (updated.deletedAt != null) {
         return new ResponseBuilder().withMessage('USER DELETED').build();
