@@ -7,29 +7,35 @@ import {
   HttpStatus,
   Patch,
   Post,
-  Query,
+  Param,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { UserRegisterRequestDto, UserUpdateRequestDto } from './dto/user.dto';
 import type { Response } from '@/utils/response.builder';
 import { UserService } from './user.service';
-import { UserUpdateRequest } from './dto/user.dto';
-import { ApiBearerAuth, ApiOperation, ApiBody } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiBody,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { AccessToken } from '@/utils/AuthTokenUtils';
 import { RolesGuard } from '@/auth/guards/roles.guard';
-import { Role, Roles } from '@/auth/decorators/roles.decorator';
+import { Roles } from '@/auth/decorators/roles.decorator';
+import { Role } from '@prisma/client';
 
 @Controller('user')
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard('jwt'))
 export class UserController {
-  constructor(private readonly userService: UserService) { }
+  constructor(private readonly userService: UserService) {}
 
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(RolesGuard)
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
-  @Post('register')
+  @Post('/create')
   @ApiOperation({
     summary: 'User Registration',
     description: 'Register a new user',
@@ -52,36 +58,41 @@ export class UserController {
     },
   })
   public async register(
-    @Body() userRegisterRequest: UserRegisterRequest,
+    @Body() userRegisterRequest: UserRegisterRequestDto,
     @AccessToken() token: string,
   ): Promise<Response> {
     return this.userService.create(userRegisterRequest, token);
   }
 
   @HttpCode(HttpStatus.OK)
-  @Get()
+  @Get('/list')
   @ApiOperation({
     summary: 'Get All Users',
     description: 'Retrieve a list of all users',
   })
-  public async getList(): Promise<Response> {
-    return this.userService.getAll();
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
+  async getList(
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+  ): Promise<Response> {
+    return this.userService.getAll(page, limit);
   }
 
   @HttpCode(HttpStatus.OK)
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
-  @Get('id')
+  @Get('/:userId')
   @ApiOperation({
     summary: 'Get User by ID',
     description: 'Retrieve user details by user ID',
   })
-  public async getUser(@Query('id') id: string): Promise<Response> {
-    return this.userService.getUserById(id);
+  public async getUser(@Param('userId') userId: string): Promise<Response> {
+    return this.userService.getUserById(userId);
   }
 
   @HttpCode(HttpStatus.OK)
-  @Patch('update')
+  @Patch('/update/:id')
   @ApiOperation({
     summary: 'Update User',
     description: 'Update user details by user ID',
@@ -101,7 +112,7 @@ export class UserController {
     },
   })
   public async update(
-    @Query('id') id: string,
+    @Param('id') id: string,
     @Body() userUpdateRequest: UserUpdateRequestDto,
     @AccessToken() token: string,
   ): Promise<Response> {
@@ -109,13 +120,13 @@ export class UserController {
   }
 
   @HttpCode(HttpStatus.OK)
-  @Delete('delete')
+  @Delete('/delete/:id')
   @ApiOperation({
     summary: 'Delete User',
     description: 'Delete user by user ID',
   })
   public async delete(
-    @Query('id') id: string,
+    @Param('id') id: string,
     @AccessToken() token: string,
   ): Promise<Response> {
     return this.userService.delete(id, token);

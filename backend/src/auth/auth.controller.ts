@@ -9,7 +9,10 @@ export class AuthController {
 
   @HttpCode(HttpStatus.OK)
   @Post('signin')
-  @ApiOperation({ summary: 'User Sign In', description: 'Authenticate user and return access token' })
+  @ApiOperation({
+    summary: 'User Sign In',
+    description: 'Authenticate user and return access token',
+  })
   @ApiBody({
     type: LoginDto,
     examples: {
