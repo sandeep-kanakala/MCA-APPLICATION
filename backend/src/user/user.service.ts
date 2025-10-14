@@ -18,7 +18,7 @@ import type { Response } from '@/utils/response.builder';
 
 @Injectable()
 export class UserService {
-  private readonly logger = new Logger(UserService.name);
+  // private readonly logger = new Logger(UserService.name);
 
   constructor(
     private readonly prismaService: PrismaService,
@@ -64,8 +64,6 @@ export class UserService {
         select: { id: true, email: true, tenantId: true, createdAt: true },
       });
 
-      this.logger.log(`User created successfully: ${newUser.email}`);
-
       return new ResponseBuilder()
         .withStatusCode(201)
         .withMessage('User created successfully.')
@@ -109,8 +107,6 @@ export class UserService {
           updatedAt: true,
         },
       });
-
-      this.logger.log(`User updated successfully: ${updatedUser.email}`);
 
       return new ResponseBuilder()
         .withMessage('User updated successfully.')
@@ -217,8 +213,6 @@ export class UserService {
         },
       });
 
-      this.logger.warn(`User deleted: ${id}`);
-
       return new ResponseBuilder()
         .withMessage('User deleted successfully.')
         .build();
@@ -236,12 +230,6 @@ export class UserService {
   }
 
   private handleError(error: unknown, message: string): never {
-    if (error instanceof Error) {
-      this.logger.error(`${message}: ${error.message}`, error.stack);
-    } else {
-      this.logger.error(`${message}: ${JSON.stringify(error)}`);
-    }
-
     if (error instanceof BadRequestException) throw error;
     if (error instanceof ConflictException) throw error;
     if (error instanceof NotFoundException) throw error;
