@@ -1,13 +1,21 @@
 import { passwordEncoder } from '@/user/util/password.encoder';
 import { PrismaService } from './prisma.service';
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Inject } from '@nestjs/common';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import * as winston from 'winston';
 
 @Injectable()
 export class ApplicationDataIntializer implements OnModuleInit {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: winston.Logger,
+  ) {}
   async onModuleInit() {
     const tenantId = process.env.TENANT_ID;
-    if (!tenantId) throw new Error('TENANT_ID not found in config');
+    if (!tenantId) {
+      this.logger.error('TENANT_ID not found in config');
+      throw new Error('TENANT_ID not found in config');
+    }
 
     let tenant = await this.prismaService.tenant.findUnique({
       where: { id: tenantId },

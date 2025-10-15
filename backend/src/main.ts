@@ -4,10 +4,14 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ZodValidationPipe } from '@anatine/zod-nestjs';
 import dotenv from 'dotenv';
 import { AuditInterceptor } from './audit/interceptor/audit-log.interceptor';
+import { WinstonModule } from 'nest-winston';
+import { winstonLoggerOptions } from './common/logger.service';
 
 async function bootstrap() {
   dotenv.config();
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    logger: WinstonModule.createLogger(winstonLoggerOptions),
+  });
   app.useGlobalPipes(new ZodValidationPipe());
 
   const config = new DocumentBuilder()

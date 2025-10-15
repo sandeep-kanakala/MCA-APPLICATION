@@ -5,6 +5,7 @@ import {
   InternalServerErrorException,
   Logger,
   NotFoundException,
+  Inject,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
@@ -16,12 +17,15 @@ import { IUserTokenPayload } from '~/interface/userToken.interface';
 import { UserStatus, Role } from '@prisma/client';
 import type { Response } from '@/utils/response.builder';
 import type { AuditRequest } from '@/common/types/express';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import * as winston from 'winston';
 
 @Injectable()
 export class UserService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly jwtService: JwtService,
+    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: winston.Logger,
   ) {}
 
   async create(
@@ -29,6 +33,7 @@ export class UserService {
     token: string,
     req: AuditRequest,
   ): Promise<Response> {
+    this.logger.info(`Creating the user for the tenant: ${userRegisterRequest.email}`);
     try {
       const decoded = this.decodeToken(token);
 
@@ -40,6 +45,7 @@ export class UserService {
       });
 
       if (existingUser) {
+        this.logger.error("Email already exists.");
         throw new ConflictException('Email already exists.');
       }
 
@@ -65,6 +71,7 @@ export class UserService {
       });
 
       req.afterUpdate = newUser;
+      this.logger.info(`User created successfully: ${newUser.id} (${newUser.email})`);
 
       return new ResponseBuilder()
         .withStatusCode(201)
@@ -72,6 +79,7 @@ export class UserService {
         .withData(newUser)
         .build();
     } catch (error) {
+      this.logger.error(`Error creating user: ${userRegisterRequest.email}`, { error: error.message });
       this.handleError(error, 'Error creating user');
     }
   }
@@ -82,6 +90,7 @@ export class UserService {
     token: string,
     req: AuditRequest,
   ): Promise<Response> {
+     this.logger.info(`Updating the user details for the ${id}`);
     try {
       const decoded = this.decodeToken(token);
 
@@ -90,6 +99,7 @@ export class UserService {
       });
 
       if (!existingUser) {
+        this.logger.warn(`user not found: ${id}`);
         throw new NotFoundException('User not found.');
       }
 
@@ -114,17 +124,19 @@ export class UserService {
       });
 
       req.afterUpdate = updatedUser;
-
+      this.logger.info(`User updated successfully: ${id} (${updatedUser.email})`);
       return new ResponseBuilder()
         .withMessage('User updated successfully.')
         .withData(updatedUser)
         .build();
     } catch (error) {
+      this.logger.error(`Error updating user ID: ${id}`, { error: error.message });
       this.handleError(error, 'Error updating user');
     }
   }
 
   async getAll(page = 1, limit = 10): Promise<Response> {
+    this.logger.info(`Fetching all users`);
     try {
       const pageNumber = Math.max(Number(page) || 1, 1);
       const pageSize = Math.max(Number(limit) || 10, 1);
@@ -162,13 +174,16 @@ export class UserService {
         })
         .build();
     } catch (error) {
+      this.logger.error('Error fetching user list', { error: error.message });
       this.handleError(error, 'Error fetching user list');
     }
   }
 
   async getUserById(userId: string): Promise<Response> {
+    this.logger.info(`Fetching user by ID: ${userId}`);
     try {
       if (!userId || typeof userId !== 'string' || userId.trim() === '') {
+        this.logger.warn('Invalid user ID provided');
         throw new BadRequestException('Invalid user ID.');
       }
 
@@ -187,14 +202,16 @@ export class UserService {
       });
 
       if (!user || user.status !== UserStatus.ACTIVE) {
+        this.logger.warn(`User not found or inactive: ${userId}`);
         throw new NotFoundException('User not found or inactive.');
       }
-
+      this.logger.info(`User fetched successfully: ${userId} (${user.email})`);
       return new ResponseBuilder()
         .withMessage('User fetched successfully.')
         .withData(user)
         .build();
     } catch (error) {
+      this.logger.error(`Error fetching user by ID: ${userId}`, { error: error.message });
       this.handleError(error, 'Error fetching user by ID');
     }
   }
@@ -204,6 +221,7 @@ export class UserService {
     token: string,
     req: AuditRequest,
   ): Promise<Response> {
+    this.logger.info(`Delete user request received for ID: ${id}`);
     try {
       const decoded = this.decodeToken(token);
 
@@ -212,6 +230,7 @@ export class UserService {
       });
 
       if (!user) {
+        this.logger.warn(`Attempt to delete non-existent user: ${id}`);
         throw new NotFoundException('User not found.');
       }
 
@@ -225,11 +244,12 @@ export class UserService {
       });
 
       req.beforeUpdate = user;
-
+      this.logger.info(`User deleted successfully: ${id} (${user.email})`);
       return new ResponseBuilder()
         .withMessage('User deleted successfully.')
         .build();
     } catch (error) {
+      this.logger.error(`Error deleting user ID: ${id}`, { error: error.message });
       this.handleError(error, 'Error deleting user');
     }
   }

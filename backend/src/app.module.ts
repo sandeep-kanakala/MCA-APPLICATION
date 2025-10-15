@@ -5,12 +5,15 @@ import { ConfigModule } from '@nestjs/config';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { UserModule } from './user/user.module';
 import { AuditModule } from './audit/audit-log.module';
+import { WinstonModule } from 'nest-winston';
+import { winstonLoggerOptions } from './common/logger.service';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    WinstonModule.forRoot(winstonLoggerOptions),
     AuthModule,
     PrismaModule,
     DashboardModule,
