@@ -167,6 +167,8 @@ model Tenant {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+   isArchived Boolean @default(false)
+   archivedAt DateTime?
 
   users              User[]
   // roles              Role[]
@@ -202,6 +204,9 @@ model Team {
   tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   members   UserTeam[]
 
+   isArchived Boolean @default(false)
+   archivedAt DateTime?
+
   @@unique([tenantId, name])
   @@index([tenantId])
 }
@@ -223,7 +228,8 @@ model User {
   createdBy  String
   updatedAt  DateTime   @updatedAt
   updatedBy  String?
-  deletedAt  DateTime?
+  isArchived Boolean @default(false)
+  archivedAt DateTime?
 
   tenant  Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   role    Role
@@ -305,7 +311,8 @@ model Account {
   updatedById     String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
-  deletedAt       DateTime?
+  isArchived      Boolean   @default(false)
+  archivedAt      DateTime?
 
   tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   owner     User?  @relation("AccountOwner", fields: [ownerId], references: [id])
@@ -348,7 +355,8 @@ model Contact {
   updatedById String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
 
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   account   Account? @relation(fields: [accountId], references: [id])
@@ -392,7 +400,8 @@ model Lead {
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  isArchived Boolean  @default(false)
+  archivedAt DateTime?
 
   tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   owner     User?  @relation("LeadOwner", fields: [ownerId], references: [id])
@@ -437,7 +446,8 @@ model Opportunity {
   updatedById String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
 
   tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   account   Account   @relation(fields: [accountId], references: [id])
@@ -498,7 +508,8 @@ model Product {
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  isArchived Boolean  @default(false)
+  archivedAt DateTime?
 
   tenant           Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   priceBookEntries PriceBookEntry[]
@@ -659,7 +670,8 @@ model Quote {
   updatedById String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
 
   tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   opportunity Opportunity     @relation(fields: [opportunityId], references: [id])
@@ -719,7 +731,8 @@ model Order {
   updatedById String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
 
   tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   account       Account          @relation(fields: [accountId], references: [id])
@@ -958,7 +971,8 @@ model Event {
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  isArchived Boolean  @default(false)
+  archivedAt DateTime?
 
   tenant       Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdBy    User               @relation("EventCreator", fields: [createdById], references: [id])

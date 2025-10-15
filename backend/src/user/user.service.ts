@@ -237,7 +237,7 @@ export class UserService {
       await this.prismaService.user.update({
         where: { id },
         data: {
-          deletedAt: new Date(),
+          archivedAt: new Date().toISOString(),
           status: UserStatus.INACTIVE,
           updatedBy: decoded.email,
         },
