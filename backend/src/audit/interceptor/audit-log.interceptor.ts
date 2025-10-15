@@ -8,7 +8,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { Observable, tap } from 'rxjs';
 import { AuditLogService } from '../audit-log.service';
-import { AuditRequest } from '../../common/types/express';
+import type { AuditRequest } from '~/interface';
 import * as jwt from 'jsonwebtoken';
 import { ConfigService } from '@nestjs/config';
 import { AUDIT_ENTITY_KEY } from '../decorators/audit-log.decorator';
@@ -48,8 +48,8 @@ export class AuditInterceptor implements NestInterceptor {
         const decoded = jwt.verify(token, secret);
         req.user =
           typeof decoded === 'string' ? { id: decoded } : (decoded as JwtUser);
-      } catch (err) {
-        throw new UnauthorizedException('Invalid token for audit logging');
+      } catch (err: any) {
+        throw new UnauthorizedException('Invalid token for audit logging', err);
       }
     }
 

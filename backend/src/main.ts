@@ -12,6 +12,10 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: WinstonModule.createLogger(winstonLoggerOptions),
   });
+  app.enableCors({
+    origin: [process.env.APP_DOMAIN],
+    credentials: true,
+  });
   app.useGlobalPipes(new ZodValidationPipe());
 
   const config = new DocumentBuilder()

@@ -15,7 +15,7 @@ export class AuditLogController {
   @Get()
   @UseGuards(RolesGuard)
   @Roles(Role.SUPER_ADMIN)
-  async getAllLogs() {
+  async getAllLogs(): Promise<any> {
     return this.auditLogService.getAllLogs();
   }
 }

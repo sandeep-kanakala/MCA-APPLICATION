@@ -161,14 +161,14 @@ enum Role {
 // --------------------- Core / System ------------------------
 
 model Tenant {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  domain    String?  @unique
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-   isArchived Boolean @default(false)
-   archivedAt DateTime?
+  id         String    @id @default(cuid())
+  name       String    @unique
+  domain     String?   @unique
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  isArchived Boolean   @default(false)
+  archivedAt DateTime?
 
   users              User[]
   // roles              Role[]
@@ -204,8 +204,8 @@ model Team {
   tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   members   UserTeam[]
 
-   isArchived Boolean @default(false)
-   archivedAt DateTime?
+  isArchived Boolean   @default(false)
+  archivedAt DateTime?
 
   @@unique([tenantId, name])
   @@index([tenantId])
@@ -228,7 +228,7 @@ model User {
   createdBy  String
   updatedAt  DateTime   @updatedAt
   updatedBy  String?
-  isArchived Boolean @default(false)
+  isArchived Boolean    @default(false)
   archivedAt DateTime?
 
   tenant  Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -398,9 +398,9 @@ model Lead {
   convertedAccountId     String?
   convertedOpportunityId String?
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  isArchived Boolean  @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  isArchived Boolean   @default(false)
   archivedAt DateTime?
 
   tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -506,9 +506,9 @@ model Product {
   defaultTermMonths    Int? // e.g., 12
   trialDays            Int? // free trial support
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  isArchived Boolean  @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  isArchived Boolean   @default(false)
   archivedAt DateTime?
 
   tenant           Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -969,9 +969,9 @@ model Event {
   opportunityId String?
   leadId        String?
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  isArchived Boolean  @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  isArchived Boolean   @default(false)
   archivedAt DateTime?
 
   tenant       Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -1074,15 +1074,14 @@ model Attachment {
   @@index([tenantId])
 }
 
-
 model AuditLog {
   id        String   @id @default(uuid())
   tenantId  String?
   userId    String?
-  entity    String 
+  entity    String
   entityId  String
-  action    String   // CREATE, UPDATE, DELETE
-  details   String   // JSON string: { before?, after? }
+  action    String // CREATE, UPDATE, DELETE
+  details   String // JSON string: { before?, after? }
   ipAddress String?
   userAgent String?
   createdAt DateTime @default(now())

@@ -28,7 +28,7 @@ export default defineConfig([
     files: ['src/**/*.ts', 'interface/*.ts', 'test/**/*.ts'],
 
     rules: {
-      // '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/no-unsafe-argument': 'warn',
     },

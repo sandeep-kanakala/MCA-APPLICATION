@@ -27,7 +27,7 @@ import { RolesGuard } from '@/auth/guards/roles.guard';
 import { Roles } from '@/auth/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import { AuditEntity } from '@/audit/decorators/audit-log.decorator';
-import type { AuditRequest } from '@/common/types/express';
+import type { AuditRequest, AuthenticatedRequest } from '~/interface';
 
 @Controller('user')
 @ApiBearerAuth('access-token')
@@ -35,6 +35,13 @@ import type { AuditRequest } from '@/common/types/express';
 @AuditEntity('User')
 export class UserController {
   constructor(private readonly userService: UserService) {}
+
+  @HttpCode(HttpStatus.OK)
+  @Get('/role')
+  getRole(@Request() req: AuthenticatedRequest): string {
+    const role = req.user.role;
+    return role;
+  }
 
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(RolesGuard)
@@ -61,7 +68,7 @@ export class UserController {
       },
     },
   })
-  public async register(
+  async register(
     @Body() userRegisterRequest: UserRegisterRequestDto,
     @AccessToken() token: string,
     @Request() req: AuditRequest,
@@ -92,7 +99,7 @@ export class UserController {
     summary: 'Get User by ID',
     description: 'Retrieve user details by user ID',
   })
-  public async getUser(@Param('userId') userId: string): Promise<Response> {
+  async getUser(@Param('userId') userId: string): Promise<Response> {
     return this.userService.getUserById(userId);
   }
 
@@ -116,7 +123,7 @@ export class UserController {
       },
     },
   })
-  public async update(
+  async update(
     @Param('id') id: string,
     @Body() userUpdateRequest: UserUpdateRequestDto,
     @AccessToken() token: string,
@@ -131,7 +138,7 @@ export class UserController {
     summary: 'Delete User',
     description: 'Delete user by user ID',
   })
-  public async delete(
+  async delete(
     @Param('id') id: string,
     @AccessToken() token: string,
     @Request() req: AuditRequest,

@@ -15,7 +15,7 @@ import { passwordEncoder } from './util/password.encoder';
 import { IUserTokenPayload } from '~/interface/userToken.interface';
 import { UserStatus, Role } from '@prisma/client';
 import type { Response } from '@/utils/response.builder';
-import type { AuditRequest } from '@/common/types/express';
+import type { AuditRequest } from '~/interface';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import * as winston from 'winston';
 
@@ -81,9 +81,11 @@ export class UserService {
         .withMessage('User created successfully.')
         .withData(newUser)
         .build();
-    } catch (error) {
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'Unknown error occurred';
       this.logger.error(`Error creating user: ${userRegisterRequest.email}`, {
-        error: error.message,
+        error: message,
       });
       this.handleError(error, 'Error creating user');
     }
@@ -136,9 +138,11 @@ export class UserService {
         .withMessage('User updated successfully.')
         .withData(updatedUser)
         .build();
-    } catch (error) {
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'Unknown error occurred';
       this.logger.error(`Error updating user ID: ${id}`, {
-        error: error.message,
+        error: message,
       });
       this.handleError(error, 'Error updating user');
     }
@@ -182,8 +186,10 @@ export class UserService {
           data: users,
         })
         .build();
-    } catch (error) {
-      this.logger.error('Error fetching user list', { error: error.message });
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'Unknown error occurred';
+      this.logger.error('Error fetching user list', { error: message });
       this.handleError(error, 'Error fetching user list');
     }
   }
@@ -219,9 +225,11 @@ export class UserService {
         .withMessage('User fetched successfully.')
         .withData(user)
         .build();
-    } catch (error) {
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'Unknown error occurred';
       this.logger.error(`Error fetching user by ID: ${userId}`, {
-        error: error.message,
+        error: message,
       });
       this.handleError(error, 'Error fetching user by ID');
     }
@@ -259,9 +267,11 @@ export class UserService {
       return new ResponseBuilder()
         .withMessage('User deleted successfully.')
         .build();
-    } catch (error) {
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'Unknown error occurred';
       this.logger.error(`Error deleting user ID: ${id}`, {
-        error: error.message,
+        error: message,
       });
       this.handleError(error, 'Error deleting user');
     }
@@ -280,6 +290,6 @@ export class UserService {
     if (error instanceof ConflictException) throw error;
     if (error instanceof NotFoundException) throw error;
 
-    throw new InternalServerErrorException('Internal server error.');
+    throw new InternalServerErrorException(message || 'Internal server error.');
   }
 }
