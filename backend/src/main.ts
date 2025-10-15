@@ -3,6 +3,7 @@ import { AppModule } from '@/app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ZodValidationPipe } from '@anatine/zod-nestjs';
 import dotenv from 'dotenv';
+import { AuditInterceptor } from './audit/interceptor/audit-log.interceptor';
 
 async function bootstrap() {
   dotenv.config();
@@ -28,6 +29,8 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
 
   SwaggerModule.setup('api/swagger', app, document);
+
+  app.useGlobalInterceptors(app.get(AuditInterceptor));
 
   await app.listen(process.env.PORT ?? 8080);
 }

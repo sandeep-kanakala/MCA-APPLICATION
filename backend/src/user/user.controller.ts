@@ -10,6 +10,7 @@ import {
   Param,
   UseGuards,
   Query,
+  Request,
 } from '@nestjs/common';
 import { UserRegisterRequestDto, UserUpdateRequestDto } from './dto/user.dto';
 import type { Response } from '@/utils/response.builder';
@@ -25,10 +26,13 @@ import { AccessToken } from '@/utils/AuthTokenUtils';
 import { RolesGuard } from '@/auth/guards/roles.guard';
 import { Roles } from '@/auth/decorators/roles.decorator';
 import { Role } from '@prisma/client';
+import { AuditEntity } from '@/audit/decorators/audit-log.decorator';
+import type { AuditRequest } from '@/common/types/express';
 
 @Controller('user')
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard('jwt'))
+@AuditEntity('User')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
@@ -60,8 +64,9 @@ export class UserController {
   public async register(
     @Body() userRegisterRequest: UserRegisterRequestDto,
     @AccessToken() token: string,
+    @Request() req: AuditRequest,
   ): Promise<Response> {
-    return this.userService.create(userRegisterRequest, token);
+    return this.userService.create(userRegisterRequest, token, req);
   }
 
   @HttpCode(HttpStatus.OK)
@@ -115,8 +120,9 @@ export class UserController {
     @Param('id') id: string,
     @Body() userUpdateRequest: UserUpdateRequestDto,
     @AccessToken() token: string,
+    @Request() req: AuditRequest,
   ): Promise<Response> {
-    return this.userService.update(id, userUpdateRequest, token);
+    return this.userService.update(id, userUpdateRequest, token, req);
   }
 
   @HttpCode(HttpStatus.OK)
@@ -128,7 +134,8 @@ export class UserController {
   public async delete(
     @Param('id') id: string,
     @AccessToken() token: string,
+    @Request() req: AuditRequest,
   ): Promise<Response> {
-    return this.userService.delete(id, token);
+    return this.userService.delete(id, token, req);
   }
 }

@@ -1059,3 +1059,20 @@ model Attachment {
 
   @@index([tenantId])
 }
+
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  tenantId  String?
+  userId    String?
+  entity    String 
+  entityId  String
+  action    String   // CREATE, UPDATE, DELETE
+  details   String   // JSON string: { before?, after? }
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([userId])
+}

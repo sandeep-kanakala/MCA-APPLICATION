@@ -15,10 +15,10 @@ import { passwordEncoder } from './util/password.encoder';
 import { IUserTokenPayload } from '~/interface/userToken.interface';
 import { UserStatus, Role } from '@prisma/client';
 import type { Response } from '@/utils/response.builder';
+import type { AuditRequest } from '@/common/types/express';
 
 @Injectable()
 export class UserService {
-
   constructor(
     private readonly prismaService: PrismaService,
     private readonly jwtService: JwtService,
@@ -27,6 +27,7 @@ export class UserService {
   async create(
     userRegisterRequest: UserRegisterRequestDto,
     token: string,
+    req: AuditRequest,
   ): Promise<Response> {
     try {
       const decoded = this.decodeToken(token);
@@ -63,6 +64,8 @@ export class UserService {
         select: { id: true, email: true, tenantId: true, createdAt: true },
       });
 
+      req.afterUpdate = newUser;
+
       return new ResponseBuilder()
         .withStatusCode(201)
         .withMessage('User created successfully.')
@@ -77,6 +80,7 @@ export class UserService {
     id: string,
     userUpdateRequest: UserUpdateRequestDto,
     token: string,
+    req: AuditRequest,
   ): Promise<Response> {
     try {
       const decoded = this.decodeToken(token);
@@ -88,6 +92,8 @@ export class UserService {
       if (!existingUser) {
         throw new NotFoundException('User not found.');
       }
+
+      req.beforeUpdate = existingUser;
 
       const updatedUser = await this.prismaService.user.update({
         where: { id },
@@ -106,6 +112,8 @@ export class UserService {
           updatedAt: true,
         },
       });
+
+      req.afterUpdate = updatedUser;
 
       return new ResponseBuilder()
         .withMessage('User updated successfully.')
@@ -191,7 +199,11 @@ export class UserService {
     }
   }
 
-  async delete(id: string, token: string): Promise<Response> {
+  async delete(
+    id: string,
+    token: string,
+    req: AuditRequest,
+  ): Promise<Response> {
     try {
       const decoded = this.decodeToken(token);
 
@@ -211,6 +223,8 @@ export class UserService {
           updatedBy: decoded.email,
         },
       });
+
+      req.beforeUpdate = user;
 
       return new ResponseBuilder()
         .withMessage('User deleted successfully.')

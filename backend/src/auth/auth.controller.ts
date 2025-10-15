@@ -2,6 +2,7 @@ import { Controller, Post, Body, HttpStatus, HttpCode } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto';
 import { ApiOperation, ApiBody } from '@nestjs/swagger';
+import { SkipAudit } from '@/audit/decorators/skip-audit-log.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -13,6 +14,7 @@ export class AuthController {
     summary: 'User Sign In',
     description: 'Authenticate user and return access token',
   })
+  @SkipAudit()
   @ApiBody({
     type: LoginDto,
     examples: {
