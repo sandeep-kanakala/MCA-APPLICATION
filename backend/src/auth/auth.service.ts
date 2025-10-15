@@ -39,7 +39,7 @@ export class AuthService {
     }
     const pwMatches = await bcrypt.compare(dto.password, user.password);
 
-    if (!pwMatches){
+    if (!pwMatches) {
       this.logger.error(`Invalid credentials for user: ${dto.email}`);
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -49,7 +49,7 @@ export class AuthService {
 
   async signToken(
     userId: string,
-    email: String,
+    email: string,
     tenantId: string,
   ): Promise<any> {
     this.logger.info(`Generating token for user ID: ${userId}`);
@@ -70,7 +70,9 @@ export class AuthService {
       this.logger.error(`Token invalid or expired for user ID: ${userId}`);
       throw new UnauthorizedException('Token invalid (or) expired !');
     }
-    this.logger.info(`Token payload validated successfully for user ID: ${userId}`);
+    this.logger.info(
+      `Token payload validated successfully for user ID: ${userId}`,
+    );
     return userData;
   }
 }

@@ -28,31 +28,24 @@ export class AccountController {
 
   @HttpCode(HttpStatus.CREATED)
   @Post('/create')
- public async create(
-  @Body() dto: CreateAccountDto,
-   @AccessToken() token: string
-  ): Promise<Response>
-    {
+  public async create(
+    @Body() dto: CreateAccountDto,
+    @AccessToken() token: string,
+  ): Promise<Response> {
     return this.accounts.createAccount(dto, token);
   }
 
-
-
   @HttpCode(HttpStatus.OK)
-  @Get("/list")
+  @Get('/list')
   public async getList(): Promise<Response> {
     return this.accounts.getAll();
   }
 
-
-
   @HttpCode(HttpStatus.OK)
   @Get('/:id')
-public async getAccount(@Param('id') id: string): Promise<Response> {
+  public async getAccount(@Param('id') id: string): Promise<Response> {
     return this.accounts.getAccountById(id);
   }
-
-
 
   @HttpCode(HttpStatus.OK)
   @Patch('/update/:id')
@@ -73,5 +66,3 @@ public async getAccount(@Param('id') id: string): Promise<Response> {
     return this.accounts.deleteAccount(id, token);
   }
 }
-
-

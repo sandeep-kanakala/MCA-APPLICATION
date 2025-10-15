@@ -3,7 +3,6 @@ import {
   ConflictException,
   Injectable,
   InternalServerErrorException,
-  Logger,
   NotFoundException,
   Inject,
 } from '@nestjs/common';
@@ -33,7 +32,9 @@ export class UserService {
     token: string,
     req: AuditRequest,
   ): Promise<Response> {
-    this.logger.info(`Creating the user for the tenant: ${userRegisterRequest.email}`);
+    this.logger.info(
+      `Creating the user for the tenant: ${userRegisterRequest.email}`,
+    );
     try {
       const decoded = this.decodeToken(token);
 
@@ -45,7 +46,7 @@ export class UserService {
       });
 
       if (existingUser) {
-        this.logger.error("Email already exists.");
+        this.logger.error('Email already exists.');
         throw new ConflictException('Email already exists.');
       }
 
@@ -71,7 +72,9 @@ export class UserService {
       });
 
       req.afterUpdate = newUser;
-      this.logger.info(`User created successfully: ${newUser.id} (${newUser.email})`);
+      this.logger.info(
+        `User created successfully: ${newUser.id} (${newUser.email})`,
+      );
 
       return new ResponseBuilder()
         .withStatusCode(201)
@@ -79,7 +82,9 @@ export class UserService {
         .withData(newUser)
         .build();
     } catch (error) {
-      this.logger.error(`Error creating user: ${userRegisterRequest.email}`, { error: error.message });
+      this.logger.error(`Error creating user: ${userRegisterRequest.email}`, {
+        error: error.message,
+      });
       this.handleError(error, 'Error creating user');
     }
   }
@@ -90,7 +95,7 @@ export class UserService {
     token: string,
     req: AuditRequest,
   ): Promise<Response> {
-     this.logger.info(`Updating the user details for the ${id}`);
+    this.logger.info(`Updating the user details for the ${id}`);
     try {
       const decoded = this.decodeToken(token);
 
@@ -124,13 +129,17 @@ export class UserService {
       });
 
       req.afterUpdate = updatedUser;
-      this.logger.info(`User updated successfully: ${id} (${updatedUser.email})`);
+      this.logger.info(
+        `User updated successfully: ${id} (${updatedUser.email})`,
+      );
       return new ResponseBuilder()
         .withMessage('User updated successfully.')
         .withData(updatedUser)
         .build();
     } catch (error) {
-      this.logger.error(`Error updating user ID: ${id}`, { error: error.message });
+      this.logger.error(`Error updating user ID: ${id}`, {
+        error: error.message,
+      });
       this.handleError(error, 'Error updating user');
     }
   }
@@ -211,7 +220,9 @@ export class UserService {
         .withData(user)
         .build();
     } catch (error) {
-      this.logger.error(`Error fetching user by ID: ${userId}`, { error: error.message });
+      this.logger.error(`Error fetching user by ID: ${userId}`, {
+        error: error.message,
+      });
       this.handleError(error, 'Error fetching user by ID');
     }
   }
@@ -249,7 +260,9 @@ export class UserService {
         .withMessage('User deleted successfully.')
         .build();
     } catch (error) {
-      this.logger.error(`Error deleting user ID: ${id}`, { error: error.message });
+      this.logger.error(`Error deleting user ID: ${id}`, {
+        error: error.message,
+      });
       this.handleError(error, 'Error deleting user');
     }
   }

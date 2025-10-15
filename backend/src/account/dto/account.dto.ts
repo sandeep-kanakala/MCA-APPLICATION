@@ -27,5 +27,3 @@ export const UpdateAccountSchema = BaseAccountSchema.partial();
 
 export class CreateAccountDto extends createZodDto(CreateAccountSchema) {}
 export class UpdateAccountDto extends createZodDto(UpdateAccountSchema) {}
-
-

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateAccountDto, UpdateAccountDto } from './dto/account.dto';
 import { ResponseBuilder } from '@/utils/response.builder';
@@ -12,10 +16,7 @@ export class AccountService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async createAccount(
-    dto: CreateAccountDto,
-    token: string,
-  ): Promise<Response> {
+  async createAccount(dto: CreateAccountDto, token: string): Promise<Response> {
     const decoded = this.jwtService.decode(token);
     const tenantId = decoded.tenantId;
     const userId = decoded.userId;
@@ -93,7 +94,7 @@ export class AccountService {
 
   async getAll(): Promise<Response> {
     const items = await this.prisma.account.findMany({
-      where: { isArchived: false},
+      where: { isArchived: false },
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
@@ -149,7 +150,7 @@ export class AccountService {
       },
     });
     if (!account) throw new NotFoundException('Account not found');
-    
+
     return new ResponseBuilder()
       .withData(account)
       .withMessage('Account retrieved successfully')
@@ -167,8 +168,8 @@ export class AccountService {
     try {
       const existingAccount = await this.prisma.account.findFirst({
         where: { id, isArchived: false },
-      }); 
-      
+      });
+
       if (!existingAccount) {
         throw new NotFoundException('Account not found');
       }
@@ -182,7 +183,7 @@ export class AccountService {
             id: { not: id },
           },
         });
-        
+
         if (nameConflict) {
           throw new ConflictException('Account with this name already exists');
         }
@@ -237,7 +238,10 @@ export class AccountService {
         .withMessage('Account updated successfully')
         .build();
     } catch (error) {
-      if (error instanceof NotFoundException || error instanceof ConflictException) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ConflictException
+      ) {
         throw error;
       }
       throw new ConflictException('Failed to update account');
@@ -251,7 +255,7 @@ export class AccountService {
       const existingAccount = await this.prisma.account.findFirst({
         where: { id },
       });
-      
+
       if (!existingAccount) {
         throw new NotFoundException('Account not found');
       }
@@ -276,5 +280,3 @@ export class AccountService {
     }
   }
 }
-
-
