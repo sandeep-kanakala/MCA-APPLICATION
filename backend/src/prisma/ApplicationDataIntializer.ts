@@ -1,8 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 import { passwordEncoder } from '@/user/util/password.encoder';
 import { PrismaService } from './prisma.service';
 import { Injectable, OnModuleInit, Inject } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import * as winston from 'winston';
+import { Role } from '@prisma/client';
 
 @Injectable()
 export class ApplicationDataIntializer implements OnModuleInit {
@@ -53,6 +56,76 @@ export class ApplicationDataIntializer implements OnModuleInit {
           role: 'SUPER_ADMIN',
         },
       });
+    }
+
+    //add permissions
+    const subjects = [
+      'Tenant',
+      'Team',
+      'User',
+      'Permission',
+      'UserTeam',
+      'Account',
+      'Contact',
+      'Lead',
+      'Opportunity',
+      'OpportunityContactRole',
+      'Product',
+      'PriceBook',
+      'PriceBookEntry',
+      'ProductBundle',
+      'ProductBundleItem',
+      'PriceList',
+      'PriceListEntry',
+      'Quote',
+      'QuoteLineItem',
+      'Order',
+      'OrderAmendment',
+      'OrderItem',
+      'Campaign',
+      'CampaignContactMember',
+      'CampaignLeadMember',
+      'Subscription',
+      'SubscriptionItem',
+      'Asset',
+      'Task',
+      'Event',
+      'EventParticipant',
+      'Note',
+      'Attachment',
+    ];
+    const actions = ['create', 'read', 'update', 'delete'];
+
+    const data: {
+      tenantId: string;
+      subject: string;
+      action: string;
+      role: Role;
+      active: boolean;
+    }[] = [];
+
+    for (const subject of subjects) {
+      for (const action of actions) {
+        for (const role of Object.values(Role)) {
+          data.push({
+            tenantId,
+            subject,
+            action,
+            role,
+            active: role === Role.SUPER_ADMIN, // only super admin active
+          });
+        }
+      }
+    }
+
+    try {
+      await this.prismaService.permission.createMany({
+        data,
+        skipDuplicates: true,
+      });
+      console.log('Permissions seeded');
+    } catch (error) {
+      console.log('Error seeding permissions', error);
     }
   }
 }

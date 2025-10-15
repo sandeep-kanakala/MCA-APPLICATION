@@ -11,6 +11,7 @@ import {
   UseGuards,
   Query,
   Request,
+  ForbiddenException,
 } from '@nestjs/common';
 import { UserRegisterRequestDto, UserUpdateRequestDto } from './dto/user.dto';
 import type { Response } from '@/utils/response.builder';
@@ -28,6 +29,10 @@ import { Roles } from '@/auth/decorators/roles.decorator';
 import { Role, type User } from '@prisma/client';
 import { AuditEntity } from '@/audit/decorators/audit-log.decorator';
 import type { AuditRequest, AuthenticatedRequest } from '~/interface';
+import {
+  AppAbility,
+  PermissionsGuard,
+} from '@/permissions/guards/permissions.guard';
 
 @Controller('user')
 @ApiBearerAuth('access-token')
@@ -104,6 +109,7 @@ export class UserController {
   }
 
   @HttpCode(HttpStatus.OK)
+  @UseGuards(PermissionsGuard)
   @Patch('/update/:id')
   @ApiOperation({
     summary: 'Update User',
@@ -127,8 +133,15 @@ export class UserController {
     @Param('id') id: string,
     @Body() userUpdateRequest: UserUpdateRequestDto,
     @AccessToken() token: string,
-    @Request() req: AuditRequest,
+    @Request() req: AuditRequest & { ability: AppAbility },
   ): Promise<Response> {
+    const ability = req?.ability;
+
+    if (ability.cannot('update', 'User')) {
+      throw new ForbiddenException(
+        'You do not have permission to update users',
+      );
+    }
     return this.userService.update(id, userUpdateRequest, token, req);
   }
 

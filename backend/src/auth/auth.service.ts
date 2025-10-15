@@ -51,7 +51,10 @@ export class AuthService {
     userId: string,
     email: string,
     tenantId: string,
-  ): Promise<any> {
+  ): Promise<{
+    response: { statusCode: number; message: string; data: unknown };
+    access_token: string;
+  }> {
     this.logger.info(`Generating token for user ID: ${userId}`);
     const payload = { userId, email, tenantId };
     const token = await this.jwt.signAsync(payload);

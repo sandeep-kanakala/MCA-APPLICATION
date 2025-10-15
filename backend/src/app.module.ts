@@ -7,6 +7,7 @@ import { UserModule } from './user/user.module';
 import { AuditModule } from './audit/audit-log.module';
 import { WinstonModule } from 'nest-winston';
 import { winstonLoggerOptions } from './common/logger.service';
+import { PermissionsModule } from './permissions/permissions.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { winstonLoggerOptions } from './common/logger.service';
     AccountModule,
     UserModule,
     AuditModule,
+    PermissionsModule,
   ],
 })
 export class AppModule {}

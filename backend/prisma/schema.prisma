@@ -193,6 +193,7 @@ model Tenant {
   assets             Asset[]
   notes              Note[]
   attachments        Attachment[]
+  Permission         Permission[]
 }
 
 model Team {
@@ -271,6 +272,20 @@ model User {
   uploadedAttachments Attachment[] @relation("AttachmentUploadedBy")
 
   @@unique([tenantId, email])
+  @@index([tenantId])
+}
+
+model Permission {
+  id       String  @id @default(cuid())
+  tenantId String
+  subject  String // e.g. "User", "Account", "Lead"
+  action   String // e.g. "create", "read", "update", "delete"
+  active   Boolean @default(false)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  role   Role
+
+  @@unique([tenantId, role, subject, action])
   @@index([tenantId])
 }
 
