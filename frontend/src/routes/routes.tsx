@@ -12,6 +12,7 @@ const Users = lazy(() => import('@/pages/Setting/Users'));
 const Tenants = lazy(() => import('@/pages/tenants'));
 const Setting = lazy(() => import('@/pages/Setting'));
 const UserPermission = lazy(() => import('@/pages/Setting/permissions'));
+const Form = lazy(() => import('@/features/components/UserDetails/userdetails'));
 const LayoutWrapper = () => {
   const location = useLocation();
   const isSettingRoute = location.pathname.includes('/setting');
@@ -40,11 +41,15 @@ export const router = createBrowserRouter([
     element: <Error404 />,
   },
   {
-    element: <LayoutWrapper />, // Wrap all routes that need Layout
+    element: <LayoutWrapper />,
     children: [
       {
         path: 'apps/sales/dashboard',
         element: <Dashboard />,
+      },
+      {
+        path: 'apps/sales/dashboard/user',
+        element: <Form />,
       },
       {
         path: 'account',

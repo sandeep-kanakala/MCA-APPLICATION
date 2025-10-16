@@ -68,7 +68,7 @@ const UserData = {
   email: 'pavan@example.com',
   avatar: '/avatars/shadcn.jpg',
 };
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export default function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const location = useLocation();
   const currentPath = location.pathname;
 

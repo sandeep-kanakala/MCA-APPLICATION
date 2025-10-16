@@ -25,7 +25,7 @@ export default function SideBar({ children }: { children?: React.ReactNode }) {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
+      <SidebarInset className="!m-0 !rounded-none">
         <header className="flex h-16 shrink-0 items-center gap-2">
           <div className="flex items-center  px-4">
             <SidebarTrigger className="-ml-1" />

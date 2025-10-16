@@ -65,7 +65,7 @@ export default function Tenantspage() {
                 ))}
               </nav>
             </div>
-            <div className="w-full lg:w-3/5 bg-white">
+            <div className="w-full lg:w-3/5">
               <div className="p-4 md:p-6 border-b border-gray-200">
                 <h1 className="text-xl md:text-2xl font-semibold text-gray-900">Multichoice</h1>
               </div>
