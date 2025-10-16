@@ -25,7 +25,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { AccessToken } from '@/utils/AuthTokenUtils';
 import { RolesGuard } from '@/auth/guards/roles.guard';
 import { Roles } from '@/auth/decorators/roles.decorator';
-import { Role } from '@prisma/client';
+import { Role, type User } from '@prisma/client';
 import { AuditEntity } from '@/audit/decorators/audit-log.decorator';
 import type { AuditRequest, AuthenticatedRequest } from '~/interface';
 
@@ -38,9 +38,9 @@ export class UserController {
 
   @HttpCode(HttpStatus.OK)
   @Get('/role')
-  getRole(@Request() req: AuthenticatedRequest): string {
-    const role = req.user.role;
-    return role;
+  getRole(@Request() req: AuthenticatedRequest): User {
+    const user = req.user;
+    return user;
   }
 
   @HttpCode(HttpStatus.CREATED)
