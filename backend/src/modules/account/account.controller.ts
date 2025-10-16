@@ -8,20 +8,21 @@ import {
   Param,
   Post,
   Patch,
-  Query,
   Request,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AccountService } from './account.service';
 import { CreateAccountDto, UpdateAccountDto } from './dto/account.dto';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
 import type { Response } from '@/utils/response.builder';
-import { AccessToken } from '@/utils/AuthTokenUtils';
-
+import type { RequestWithUser } from '~/interface';
+import { AuditEntity } from '@/audit/decorators/audit-log.decorator';
 @Controller('accounts')
 @ApiBearerAuth('access-token')
 @ApiTags('Accounts')
+@AuditEntity('Account')
 @UseGuards(AuthGuard('jwt'))
 export class AccountController {
   constructor(private readonly accounts: AccountService) {}
@@ -30,15 +31,20 @@ export class AccountController {
   @Post('/create')
   public async create(
     @Body() dto: CreateAccountDto,
-    @AccessToken() token: string,
+    @Request() request: RequestWithUser,
   ): Promise<Response> {
-    return this.accounts.createAccount(dto, token);
+    return this.accounts.createAccount(dto, request.user, request);
   }
 
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
   @HttpCode(HttpStatus.OK)
   @Get('/list')
-  public async getList(): Promise<Response> {
-    return this.accounts.getAll();
+  public async getList(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ): Promise<Response> {
+    return this.accounts.getAll(page, limit);
   }
 
   @HttpCode(HttpStatus.OK)
@@ -52,17 +58,17 @@ export class AccountController {
   public async update(
     @Param('id') id: string,
     @Body() dto: UpdateAccountDto,
-    @AccessToken() token: string,
+    @Request() request: RequestWithUser,
   ): Promise<Response> {
-    return this.accounts.updateAccount(id, dto, token);
+    return this.accounts.updateAccount(id, dto, request.user, request);
   }
 
   @HttpCode(HttpStatus.OK)
   @Delete('/delete/:id')
   public async delete(
     @Param('id') id: string,
-    @AccessToken() token: string,
+    @Request() request: RequestWithUser,
   ): Promise<Response> {
-    return this.accounts.deleteAccount(id, token);
+    return this.accounts.deleteAccount(id, request.user, request);
   }
 }

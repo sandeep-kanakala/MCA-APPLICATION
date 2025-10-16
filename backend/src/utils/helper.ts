@@ -13,12 +13,9 @@ export const AccessToken = createParamDecorator(
   },
 );
 
-
 export function hashEmail(email: string): string {
   return crypto.createHash('md5').update(email).digest('hex');
 }
-
-
 
 export class passwordEncoder {
   public static async hashPassword(plainPassword: string): Promise<string> {

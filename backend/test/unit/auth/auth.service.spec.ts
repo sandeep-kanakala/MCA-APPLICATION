@@ -11,7 +11,7 @@ import { ResponseBuilder } from 'src/utils/response.builder';
 jest.mock('bcrypt');
 jest.mock('src/utils/response.builder');
 
-describe('AuthService (Unit)', () => { 
+describe('AuthService (Unit)', () => {
   let authService: AuthService;
   let prisma: PrismaService;
   let jwt: JwtService;
@@ -59,9 +59,8 @@ describe('AuthService (Unit)', () => {
     jest.clearAllMocks();
   });
 
- 
   // SIGNIN TESTS
- 
+
   describe('signin()', () => {
     it('should throw error if TENANT_ID not found in config', async () => {
       jest.spyOn(config, 'get').mockReturnValue(null);
@@ -126,9 +125,8 @@ describe('AuthService (Unit)', () => {
     });
   });
 
-  
   // validateTokenPayload TESTS
- 
+
   describe('validateTokenPayload()', () => {
     it('should throw UnauthorizedException if user not found', async () => {
       (prisma.user.findFirst as jest.Mock).mockResolvedValue(null);
@@ -147,7 +145,7 @@ describe('AuthService (Unit)', () => {
       (prisma.user.findFirst as jest.Mock).mockResolvedValue(mockUser);
 
       const result = await authService.validateTokenPayload('1');
-      console.log('result***',result)
+      console.log('result***', result);
 
       expect(result).toEqual(mockUser);
     });

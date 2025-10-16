@@ -1,4 +1,3 @@
-
 import { passwordEncoder } from '@/utils/helper';
 import { PrismaService } from './prisma.service';
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
@@ -11,10 +10,11 @@ import { Role } from '@prisma/client';
 
 @Injectable()
 export class ApplicationDataIntializer implements OnModuleInit {
-  constructor(private readonly prismaService: PrismaService,
+  constructor(
+    private readonly prismaService: PrismaService,
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: winston.Logger,
     private users: UserRepository,
-    private tenant: TenantRepository
+    private tenant: TenantRepository,
   ) {}
   async onModuleInit() {
     const tenantId = process.env.TENANT_ID;
@@ -26,31 +26,34 @@ export class ApplicationDataIntializer implements OnModuleInit {
     let tenant = await this.tenant.findByTenantId(tenantId);
 
     if (!tenant) {
-      const data ={
-         id: tenantId,
-         name: APP_NAME,
-      }
+      const data = {
+        id: tenantId,
+        name: APP_NAME,
+      };
       tenant = await this.tenant.createtenant(data);
     }
 
     const superUserEmail = process.env.SUPER_ADMIN_MAIL ?? '';
-    const existingSuperUser = await this.users.findFirst(superUserEmail, tenantId);
-    
+    const existingSuperUser = await this.users.findFirst(
+      superUserEmail,
+      tenantId,
+    );
+
     if (!existingSuperUser) {
       const hashedPassword = await passwordEncoder.hashPassword(
         process.env.DEFAULT_PASSWORD ?? '',
       );
       const userData = {
-          email: superUserEmail,
-          password: hashedPassword,
-          firstName: '',
-          lastName: '',
-          phoneNo: '',
-          createdBy: '',
-          tenantId,
-          role: SUPER_ADMIN,
-        }
-         await this.users.createUser(userData);
+        email: superUserEmail,
+        password: hashedPassword,
+        firstName: '',
+        lastName: '',
+        phoneNo: '',
+        createdBy: '',
+        tenantId,
+        role: SUPER_ADMIN,
+      };
+      await this.users.createUser(userData);
     }
 
     //add permissions
@@ -118,9 +121,9 @@ export class ApplicationDataIntializer implements OnModuleInit {
         data,
         skipDuplicates: true,
       });
-      console.log('Permissions seeded');
+      this.logger.info('Permissions seeded');
     } catch (error) {
-      console.log('Error seeding permissions', error);
+      this.logger.error(`Error seeding permissions ${error}`);
     }
   }
 }

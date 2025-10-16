@@ -252,6 +252,7 @@ export class UserService {
         throw new NotFoundException('User not found.');
       }
 
+      req.beforeUpdate = user;
       await this.prismaService.user.update({
         where: { id },
         data: {
@@ -261,7 +262,6 @@ export class UserService {
         },
       });
 
-      req.beforeUpdate = user;
       this.logger.info(`User deleted successfully: ${id} (${user.email})`);
       return new ResponseBuilder()
         .withMessage('User deleted successfully.')

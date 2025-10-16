@@ -8,17 +8,11 @@ import {
 import { Reflector } from '@nestjs/core';
 import { Observable, tap } from 'rxjs';
 import { AuditLogService } from '../audit-log.service';
-import type { AuditRequest } from '~/interface';
+import type { AuditRequest, IUserTokenPayload } from '~/interface';
 import * as jwt from 'jsonwebtoken';
 import { ConfigService } from '@nestjs/config';
 import { AUDIT_ENTITY_KEY } from '../decorators/audit-log.decorator';
 import { SKIP_AUDIT_KEY } from '../decorators/skip-audit-log.decorator';
-
-interface JwtUser {
-  id?: string;
-  tenantId?: string;
-  [key: string]: any;
-}
 
 @Injectable()
 export class AuditInterceptor implements NestInterceptor {
@@ -41,13 +35,14 @@ export class AuditInterceptor implements NestInterceptor {
 
     const authHeader = req.headers['authorization'] || '';
     const token = authHeader.replace('Bearer ', '');
+
     if (token) {
       const secret = this.config.get<string>('JWT_SECRET');
       if (!secret) throw new Error('JWT_SECRET is not defined');
+
       try {
-        const decoded = jwt.verify(token, secret);
-        req.user =
-          typeof decoded === 'string' ? { id: decoded } : (decoded as JwtUser);
+        const decoded = jwt.verify(token, secret) as IUserTokenPayload;
+        req.user = decoded;
       } catch (err: any) {
         throw new UnauthorizedException('Invalid token for audit logging', err);
       }
@@ -60,6 +55,7 @@ export class AuditInterceptor implements NestInterceptor {
     return next.handle().pipe(
       tap(async (result) => {
         let before, after;
+
         if (req.method === 'POST') after = result.data;
         if (req.method === 'PATCH') {
           before = req.beforeUpdate;

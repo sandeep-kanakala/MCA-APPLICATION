@@ -7,7 +7,6 @@ import type { Response } from '@/utils/response.builder';
 import { Roles } from '@/modules/auth/decorators/roles.decorator';
 import { RolesGuard } from '@/modules/auth/guards/roles.guard';
 
-
 @Controller('permissions')
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard('jwt'), RolesGuard)

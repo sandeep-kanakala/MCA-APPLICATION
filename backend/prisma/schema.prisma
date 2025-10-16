@@ -360,9 +360,10 @@ model Contact {
   id          String    @id @default(cuid())
   tenantId    String
   accountId   String?
-  email       String?
-  phone       String?   @db.VarChar(32)
+  email       String
+  phone       String   @db.VarChar(32)
   firstName   String
+  middleName  String?
   lastName    String
   title       String?   @db.VarChar(128)
   ownerId     String?

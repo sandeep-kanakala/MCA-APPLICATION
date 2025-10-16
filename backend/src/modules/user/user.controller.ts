@@ -14,7 +14,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { UserRegisterRequestDto, UserUpdateRequestDto } from './dto/user.dto';
-import type { Response } from '@/utils/response.builder';
+import { ResponseBuilder, type Response } from '@/utils/response.builder';
 import { UserService } from './user.service';
 import {
   ApiBearerAuth,
@@ -30,7 +30,7 @@ import type { AuditRequest, AuthenticatedRequest } from '~/interface';
 import {
   AppAbility,
   PermissionsGuard,
-} from '@/permissions/guards/permissions.guard';
+} from '@/modules/permissions/guards/permissions.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { AccessToken } from '@/utils/helper';
@@ -44,9 +44,8 @@ export class UserController {
 
   @HttpCode(HttpStatus.OK)
   @Get('/role')
-  getRole(@Request() req: AuthenticatedRequest): User {
-    const user = req.user;
-    return user;
+  getRole(@Request() req: AuthenticatedRequest): Response {
+    return new ResponseBuilder().withData(req.user).build();
   }
 
   @HttpCode(HttpStatus.CREATED)
@@ -99,7 +98,7 @@ export class UserController {
 
   @HttpCode(HttpStatus.OK)
   @UseGuards(RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @Get('/:userId')
   @ApiOperation({
     summary: 'Get User by ID',

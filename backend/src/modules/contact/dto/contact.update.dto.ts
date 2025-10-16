@@ -1,0 +1,33 @@
+import { z } from 'zod';
+import { createZodDto } from '@anatine/zod-nestjs';
+
+const ContactUpdateRequestSchema = z.object({
+  email: z.string().email('Invalid email address').optional(),
+  firstName: z
+    .string()
+    .regex(/^[A-Za-z]+$/, 'First Name should only contain alphabets')
+    .min(3, 'First Name should have at least 3 characters')
+    .max(20, 'First Name should be no more than 20 characters')
+    .optional(),
+  lastName: z
+    .string()
+    .regex(/^[A-Za-z]+$/, 'Last Name should only contain alphabets')
+    .min(3, 'Last Name should have at least 3 characters')
+    .max(20, 'Last Name should be no more than 20 characters')
+    .optional(),
+  middleName: z
+    .string()
+    .regex(/^[A-Za-z]+$/, 'Middle Name should only contain alphabets')
+    .min(3, 'Middle Name should have at least 3 characters')
+    .max(20, 'Middle Name should be no more than 20 characters')
+    .optional(),
+  title: z.string().optional(),
+  phone: z
+    .string()
+    .regex(/^\+?\d{1,4}[1-9]\d{9,14}$/, 'Invalid phone number')
+    .optional(),
+});
+
+export class ContactUpdateRequestDto extends createZodDto(
+  ContactUpdateRequestSchema,
+) {}

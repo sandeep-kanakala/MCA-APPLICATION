@@ -19,15 +19,15 @@ export class UserRepository {
     });
   }
 
-  async findFirst(email: string, tenantId: string){
+  async findFirst(email: string, tenantId: string) {
     return this.prisma.user.findFirst({
-      where: {email, tenantId}
+      where: { email, tenantId },
     });
   }
 
-  async createUser(userData){
+  async createUser(userData) {
     return this.prisma.user.create({
-      data:userData
-    })
+      data: userData,
+    });
   }
 }

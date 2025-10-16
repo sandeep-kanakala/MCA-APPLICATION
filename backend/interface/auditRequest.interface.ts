@@ -1,4 +1,5 @@
 import { Request } from 'express';
+import { IUserTokenPayload } from './userToken.interface'; // adjust path if needed
 
 export interface AuditRequest extends Request {
   entityId?: string;
@@ -6,9 +7,5 @@ export interface AuditRequest extends Request {
   beforeUpdate?: any;
   afterUpdate?: any;
   beforeDelete?: any;
-  user?: {
-    id?: string;
-    tenantId?: string;
-    [key: string]: any;
-  };
+  user?: IUserTokenPayload;
 }

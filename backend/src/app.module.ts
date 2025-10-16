@@ -1,16 +1,15 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from './prisma/prisma.module';
 import { ConfigModule } from '@nestjs/config';
-import { AccountModule } from './account/account.module';
+import { AccountModule } from '@/modules/account/account.module';
 import { AuditModule } from './audit/audit-log.module';
 import { WinstonModule } from 'nest-winston';
 import { winstonLoggerOptions } from './common/logger.service';
-import { PermissionsModule } from './permissions/permissions.module';
+import { PermissionsModule } from './modules/permissions/permissions.module';
 import { RepositoriesModule } from './infrastructure/repositories/repositories.module';
-import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
-
+import { ContactModule } from '@/modules/contact/contact.module';
 
 @Module({
   imports: [
@@ -25,6 +24,7 @@ import { UserModule } from './modules/user/user.module';
     AuditModule,
     PermissionsModule,
     RepositoriesModule,
+    ContactModule,
   ],
 })
 export class AppModule {}
