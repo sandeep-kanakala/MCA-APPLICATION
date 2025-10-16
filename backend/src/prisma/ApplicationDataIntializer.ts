@@ -1,17 +1,19 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-import { passwordEncoder } from '@/user/util/password.encoder';
+
+import { passwordEncoder } from '@/utils/helper';
 import { PrismaService } from './prisma.service';
-import { Injectable, OnModuleInit, Inject } from '@nestjs/common';
+import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
+import { UserRepository } from '@/infrastructure/repositories/user.repository';
+import { TenantRepository } from '@/infrastructure/repositories/tenant.repository';
+import { APP_NAME, SUPER_ADMIN } from '@/config/constants';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import * as winston from 'winston';
-import { Role } from '@prisma/client';
 
 @Injectable()
 export class ApplicationDataIntializer implements OnModuleInit {
-  constructor(
-    private readonly prismaService: PrismaService,
+  constructor(private readonly prismaService: PrismaService,
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: winston.Logger,
+    private users: UserRepository,
+    private tenant: TenantRepository
   ) {}
   async onModuleInit() {
     const tenantId = process.env.TENANT_ID;
@@ -20,32 +22,24 @@ export class ApplicationDataIntializer implements OnModuleInit {
       throw new Error('TENANT_ID not found in config');
     }
 
-    let tenant = await this.prismaService.tenant.findUnique({
-      where: { id: tenantId },
-    });
+    let tenant = await this.tenant.findByTenantId(tenantId);
+
     if (!tenant) {
-      tenant = await this.prismaService.tenant.create({
-        data: {
-          id: tenantId,
-          name: 'Multichoice',
-        },
-      });
+      const data ={
+         id: tenantId,
+         name: APP_NAME,
+      }
+      tenant = await this.tenant.createtenant(data);
     }
 
     const superUserEmail = process.env.SUPER_ADMIN_MAIL ?? '';
-    const existingSuperUser = await this.prismaService.user.findFirst({
-      where: {
-        email: superUserEmail,
-        tenantId,
-      },
-    });
-
+    const existingSuperUser = await this.users.findFirst(superUserEmail, tenantId);
+    
     if (!existingSuperUser) {
       const hashedPassword = await passwordEncoder.hashPassword(
         process.env.DEFAULT_PASSWORD ?? '',
       );
-      await this.prismaService.user.create({
-        data: {
+      const userData = {
           email: superUserEmail,
           password: hashedPassword,
           firstName: '',
@@ -53,9 +47,9 @@ export class ApplicationDataIntializer implements OnModuleInit {
           phoneNo: '',
           createdBy: '',
           tenantId,
-          role: 'SUPER_ADMIN',
-        },
-      });
+          role: SUPER_ADMIN,
+        }
+         await this.users.createUser(userData);
     }
 
     //add permissions

@@ -10,14 +10,13 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { UserRegisterRequestDto, UserUpdateRequestDto } from './dto/user.dto';
 import { ResponseBuilder } from '@/utils/response.builder';
-import { hashEmail } from '@/utils/ResourceIdGenerator';
-import { passwordEncoder } from './util/password.encoder';
 import { IUserTokenPayload } from '~/interface/userToken.interface';
 import { UserStatus, Role } from '@prisma/client';
 import type { Response } from '@/utils/response.builder';
 import type { AuditRequest } from '~/interface';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import * as winston from 'winston';
+import { hashEmail, passwordEncoder } from '@/utils/helper';
 
 @Injectable()
 export class UserService {

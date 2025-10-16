@@ -23,9 +23,7 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
-import { AccessToken } from '@/utils/AuthTokenUtils';
-import { RolesGuard } from '@/auth/guards/roles.guard';
-import { Roles } from '@/auth/decorators/roles.decorator';
+
 import { Role, type User } from '@prisma/client';
 import { AuditEntity } from '@/audit/decorators/audit-log.decorator';
 import type { AuditRequest, AuthenticatedRequest } from '~/interface';
@@ -33,6 +31,9 @@ import {
   AppAbility,
   PermissionsGuard,
 } from '@/permissions/guards/permissions.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { AccessToken } from '@/utils/helper';
 
 @Controller('user')
 @ApiBearerAuth('access-token')
