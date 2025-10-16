@@ -7,6 +7,7 @@ import { TenantRepository } from '@/infrastructure/repositories/tenant.repositor
 import { APP_NAME, SUPER_ADMIN } from '@/config/constants';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import * as winston from 'winston';
+import { Role } from '@prisma/client';
 
 @Injectable()
 export class ApplicationDataIntializer implements OnModuleInit {
