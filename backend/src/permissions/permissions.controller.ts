@@ -1,11 +1,12 @@
 import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
 import { PermissionsService } from './permissions.service';
-import { RolesGuard } from '@/auth/guards/roles.guard';
 import { ApiBearerAuth, ApiBody, ApiOperation } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { Role } from '@prisma/client';
 import type { Response } from '@/utils/response.builder';
-import { Roles } from '@/auth/decorators/roles.decorator';
+import { Roles } from '@/modules/auth/decorators/roles.decorator';
+import { RolesGuard } from '@/modules/auth/guards/roles.guard';
+
 
 @Controller('permissions')
 @ApiBearerAuth('access-token')
