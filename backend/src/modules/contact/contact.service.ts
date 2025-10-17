@@ -34,7 +34,7 @@ export class ContactService {
     this.logger.info(`Creating contact for user: ${user.email}`);
     try {
       const { accountId, ...data } = contactCreateRequestDto;
-      const account = await this.accountRepository.findById(accountId!);
+      const account = await this.accountRepository.findById(accountId);
       if (!account) {
         throw new BadRequestException(
           'Invalid foreign key reference (AccountId or UserId)',

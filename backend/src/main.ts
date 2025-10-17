@@ -13,7 +13,7 @@ async function bootstrap() {
     logger: WinstonModule.createLogger(winstonLoggerOptions),
   });
   app.enableCors({
-    origin: [process.env.APP_DOMAIN],
+    origin: [process.env.APP_DOMAIN, process.env.SERVER_DOMAIN],
     credentials: true,
   });
   app.useGlobalPipes(new ZodValidationPipe());
