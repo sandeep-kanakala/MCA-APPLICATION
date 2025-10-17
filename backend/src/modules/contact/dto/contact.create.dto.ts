@@ -20,7 +20,7 @@ const ContactCreateRequestSchema = z.object({
     .min(3, 'Middle Name should have at least 3 characters')
     .max(20, 'Middle Name should be no more than 20 characters')
     .optional(),
-  accountId: z.string().optional(),
+  accountId: z.string(),
   title: z.string().optional(),
 });
 
