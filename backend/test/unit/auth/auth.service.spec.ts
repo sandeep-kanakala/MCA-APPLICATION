@@ -145,8 +145,6 @@ describe('AuthService (Unit)', () => {
       (prisma.user.findFirst as jest.Mock).mockResolvedValue(mockUser);
 
       const result = await authService.validateTokenPayload('1');
-      console.log('result***', result);
-
       expect(result).toEqual(mockUser);
     });
   });
