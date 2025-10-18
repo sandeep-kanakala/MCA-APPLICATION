@@ -23,4 +23,10 @@ export class passwordEncoder {
     const hashedPassword = await bcrypt.hash(plainPassword, salt);
     return hashedPassword;
   }
+  public static async comparePassword(
+    plainPassword: string,
+    hashedPassword: string,
+  ): Promise<boolean> {
+    return bcrypt.compare(plainPassword, hashedPassword);
+  }
 }

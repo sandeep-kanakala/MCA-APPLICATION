@@ -8,7 +8,7 @@ import { WinstonModule } from 'nest-winston';
 import { winstonLoggerOptions } from './common/logger.service';
 
 async function bootstrap() {
-  dotenv.config();
+  dotenv.config({ path: 'mail.env' });
   const app = await NestFactory.create(AppModule, {
     logger: WinstonModule.createLogger(winstonLoggerOptions),
   });

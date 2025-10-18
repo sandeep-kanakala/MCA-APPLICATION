@@ -17,6 +17,8 @@ import {
   ApiBody,
   ApiOperation,
   ApiQuery,
+  ApiTags,
+  ApiResponse,
 } from '@nestjs/swagger';
 import { ContactService } from './contact.service';
 import { ContactCreateRequestDto, ContactUpdateRequestDto } from './dto';
@@ -25,10 +27,26 @@ import type { AuthenticatedRequest, RequestWithUser } from '~/interface';
 import { AuthGuard } from '@nestjs/passport';
 import { Response } from '@/utils/response.builder';
 
+@ApiTags('Contact')
 @Controller('/contact')
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard('jwt'))
 @AuditEntity('Contact')
+@ApiResponse({
+  status: 400,
+  description: 'The request is malformed or invalid.',
+})
+@ApiResponse({ status: 401, description: 'Unauthorized.' })
+@ApiResponse({
+  status: 403,
+  description:
+    'The user does not have the necessary privileges to perform the operation.',
+})
+@ApiResponse({ status: 500, description: 'An internal server error occurred.' })
+@ApiResponse({ status: 503, description: 'A service is unreachable.' })
+@ApiResponse({ status: 504, description: 'Gateway Timeout Error.' })
+@ApiResponse({ status: 200, description: 'OK' })
+@ApiResponse({ status: 202, description: 'Accepted' })
 export class ContactController {
   constructor(private readonly contactService: ContactService) {}
 
@@ -38,21 +56,8 @@ export class ContactController {
     summary: 'Contact creation',
     description: 'Create a new contact',
   })
-  @ApiBody({
-    type: ContactCreateRequestDto,
-    examples: {
-      example: {
-        value: {
-          accountId: 'account-5678(enter valid one)',
-          email: 'john.doe@example.com',
-          phone: '+911234567890',
-          firstName: 'John',
-          lastName: 'Doe',
-          title: 'Mr.',
-        },
-      },
-    },
-  })
+  @ApiResponse({ status: 201, description: 'Contact created successfully.' })
+  @ApiBody({ type: ContactCreateRequestDto })
   async createContact(
     @Body() contactCreateRequestDto: ContactCreateRequestDto,
     @Request() request: AuthenticatedRequest,
@@ -81,8 +86,9 @@ export class ContactController {
   @Get('/list/:accountId')
   @ApiOperation({
     summary: 'Get All Contacts By Account ID',
-    description: 'Retrieve a list of all users',
+    description: 'Retrieve a list of all contacts for a given account',
   })
+  @ApiResponse({ status: 200, description: 'Contacts retrieved successfully.' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
   async getAllContactsByAccountId(
@@ -94,6 +100,12 @@ export class ContactController {
   }
 
   @Get('/:id/:accountId')
+  @ApiOperation({
+    summary: 'Get Contact by ID',
+    description: 'Retrieve contact details by ID',
+  })
+  @ApiResponse({ status: 200, description: 'Contact retrieved successfully.' })
+  @ApiResponse({ status: 404, description: 'Contact not found.' })
   async getContact(
     @Param('id') id: string,
     @Param('accountId') accountId: string,
@@ -102,20 +114,13 @@ export class ContactController {
   }
 
   @Patch('/:id')
-  @ApiBody({
-    type: ContactUpdateRequestDto,
-    examples: {
-      example: {
-        value: {
-          email: 'jane.doe@example.com',
-          firstName: 'Jane',
-          lastName: 'Doe',
-          title: 'Ms.',
-          phone: '+911234567890',
-        },
-      },
-    },
+  @ApiOperation({
+    summary: 'Update Contact',
+    description: 'Update contact details by ID',
   })
+  @ApiResponse({ status: 200, description: 'Contact updated successfully.' })
+  @ApiResponse({ status: 404, description: 'Contact not found.' })
+  @ApiBody({ type: ContactUpdateRequestDto })
   async updateContact(
     @Param('id') id: string,
     @Request() request: RequestWithUser,
@@ -129,6 +134,12 @@ export class ContactController {
   }
 
   @Delete('delete/:contactId')
+  @ApiOperation({
+    summary: 'Delete Contact',
+    description: 'Delete contact by ID',
+  })
+  @ApiResponse({ status: 200, description: 'Contact deleted successfully.' })
+  @ApiResponse({ status: 404, description: 'Contact not found.' })
   async deleteContact(
     @Param('contactId') contactId: string,
     @Request() request: RequestWithUser,

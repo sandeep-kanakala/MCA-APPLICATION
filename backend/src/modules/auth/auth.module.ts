@@ -4,9 +4,12 @@ import { AuthService } from './auth.service';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtStrategy } from './strategy/jwt.strategy';
+import { MailUtils } from '@/utils/mailutils';
+import { ResetPasswordJwtStrategy } from './strategy/ResetPasswordStrategy';
 
 @Module({
   imports: [
+    ConfigModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -19,7 +22,7 @@ import { JwtStrategy } from './strategy/jwt.strategy';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, MailUtils, ResetPasswordJwtStrategy],
   exports: [JwtModule],
 })
 export class AuthModule {}

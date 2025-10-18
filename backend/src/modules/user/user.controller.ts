@@ -21,6 +21,8 @@ import {
   ApiOperation,
   ApiBody,
   ApiQuery,
+  ApiTags,
+  ApiResponse,
 } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 
@@ -34,15 +36,36 @@ import {
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 
+@ApiTags('User')
 @Controller('user')
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard('jwt'))
 @AuditEntity('User')
+@ApiResponse({
+  status: 400,
+  description: 'The request is malformed or invalid.',
+})
+@ApiResponse({ status: 401, description: 'Unauthorized.' })
+@ApiResponse({
+  status: 403,
+  description:
+    'The user does not have the necessary privileges to perform the operation.',
+})
+@ApiResponse({ status: 500, description: 'An internal server error occurred.' })
+@ApiResponse({ status: 503, description: 'A service is unreachable.' })
+@ApiResponse({ status: 504, description: 'Gateway Timeout Error.' })
+@ApiResponse({ status: 200, description: 'OK' })
+@ApiResponse({ status: 202, description: 'Accepted' })
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @HttpCode(HttpStatus.OK)
   @Get('/role')
+  @ApiOperation({ summary: 'Get User Role', description: 'Retrieve user role' })
+  @ApiResponse({
+    status: 200,
+    description: 'User role retrieved successfully.',
+  })
   getRole(@Request() req: AuthenticatedRequest): Response {
     return new ResponseBuilder().withData(req.user).build();
   }
@@ -55,23 +78,8 @@ export class UserController {
     summary: 'User Registration',
     description: 'Register a new user',
   })
-  @ApiBody({
-    type: UserRegisterRequestDto,
-    examples: {
-      example: {
-        summary: 'User-I',
-        value: {
-          firstName: 'John',
-          middleName: 'A',
-          lastName: 'Doe',
-          phoneNo: '1234567890',
-          email: 'john@gmail.com',
-          password: 'john@1234',
-          role: 'USER',
-        },
-      },
-    },
-  })
+  @ApiResponse({ status: 201, description: 'User created successfully.' })
+  @ApiBody({ type: UserRegisterRequestDto })
   async register(
     @Body() userRegisterRequest: UserRegisterRequestDto,
     @Request() request: RequestWithUser,
@@ -85,6 +93,7 @@ export class UserController {
     summary: 'Get All Users',
     description: 'Retrieve a list of all users',
   })
+  @ApiResponse({ status: 200, description: 'Users retrieved successfully.' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
   async getList(
@@ -102,6 +111,8 @@ export class UserController {
     summary: 'Get User by ID',
     description: 'Retrieve user details by user ID',
   })
+  @ApiResponse({ status: 200, description: 'User retrieved successfully.' })
+  @ApiResponse({ status: 404, description: 'User not found.' })
   async getUser(@Param('userId') userId: string): Promise<Response> {
     return this.userService.getUserById(userId);
   }
@@ -113,20 +124,9 @@ export class UserController {
     summary: 'Update User',
     description: 'Update user details by user ID',
   })
-  @ApiBody({
-    type: UserUpdateRequestDto,
-    examples: {
-      example: {
-        summary: 'User-I',
-        value: {
-          firstName: 'John',
-          middleName: 'Addam',
-          lastName: 'Doe',
-          phoneNo: '1234567890',
-        },
-      },
-    },
-  })
+  @ApiResponse({ status: 200, description: 'User updated successfully.' })
+  @ApiResponse({ status: 404, description: 'User not found.' })
+  @ApiBody({ type: UserUpdateRequestDto })
   async update(
     @Param('id') id: string,
     @Body() userUpdateRequest: UserUpdateRequestDto,
@@ -148,6 +148,8 @@ export class UserController {
     summary: 'Delete User',
     description: 'Delete user by user ID',
   })
+  @ApiResponse({ status: 200, description: 'User deleted successfully.' })
+  @ApiResponse({ status: 404, description: 'User not found.' })
   async delete(
     @Param('id') id: string,
     @Request() request: RequestWithUser,

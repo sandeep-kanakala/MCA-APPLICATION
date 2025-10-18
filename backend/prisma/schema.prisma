@@ -231,6 +231,7 @@ model User {
   updatedBy  String?
   isArchived Boolean    @default(false)
   archivedAt DateTime?
+  otp        String?
 
   tenant  Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   role    Role
