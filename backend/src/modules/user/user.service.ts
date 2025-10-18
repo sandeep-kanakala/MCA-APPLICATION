@@ -8,12 +8,11 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
-import { UserRegisterRequestDto, UserUpdateRequestDto } from './dto/user.dto';
+import { UserRegisterRequestDto, UserUpdateRequestDto } from './dto';
 import { ResponseBuilder } from '@/utils/response.builder';
-import { IUserTokenPayload } from '~/interface/userToken.interface';
 import { UserStatus, Role } from '@prisma/client';
 import type { Response } from '@/utils/response.builder';
-import type { AuditRequest } from '~/interface';
+import type { RequestWithUser } from '~/interface';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import * as winston from 'winston';
 import { hashEmail, passwordEncoder } from '@/utils/helper';
@@ -28,19 +27,19 @@ export class UserService {
 
   async create(
     userRegisterRequest: UserRegisterRequestDto,
-    token: string,
-    req: AuditRequest,
+    request: RequestWithUser,
   ): Promise<Response> {
     this.logger.info(
       `Creating the user for the tenant: ${userRegisterRequest.email}`,
     );
     try {
-      const decoded = this.decodeToken(token);
+      const { user } = request;
+      const { tenantId } = user;
 
       const existingUser = await this.prismaService.user.findFirst({
         where: {
           email: userRegisterRequest.email,
-          tenantId: decoded.tenantId,
+          tenantId,
         },
       });
 
@@ -63,14 +62,13 @@ export class UserService {
           phoneNo: userRegisterRequest.phoneNo?.trim(),
           email: userRegisterRequest.email.toLowerCase().trim(),
           password,
-          createdBy: decoded.email,
-          tenant: { connect: { id: decoded.tenantId } },
+          createdBy: user.email,
+          tenant: { connect: { id: tenantId } },
           role: userRegisterRequest.role as Role,
         },
         select: { id: true, email: true, tenantId: true, createdAt: true },
       });
 
-      req.afterUpdate = newUser;
       this.logger.info(
         `User created successfully: ${newUser.id} (${newUser.email})`,
       );
@@ -93,12 +91,11 @@ export class UserService {
   async update(
     id: string,
     userUpdateRequest: UserUpdateRequestDto,
-    token: string,
-    req: AuditRequest,
+    request: RequestWithUser,
   ): Promise<Response> {
     this.logger.info(`Updating the user details for the ${id}`);
     try {
-      const decoded = this.decodeToken(token);
+      const { user } = request;
 
       const existingUser = await this.prismaService.user.findFirst({
         where: { id, status: UserStatus.ACTIVE },
@@ -109,13 +106,11 @@ export class UserService {
         throw new NotFoundException('User not found.');
       }
 
-      req.beforeUpdate = existingUser;
-
       const updatedUser = await this.prismaService.user.update({
         where: { id },
         data: {
           ...userUpdateRequest,
-          updatedBy: decoded.email,
+          updatedBy: user.email,
           updatedAt: new Date(),
         },
         select: {
@@ -129,7 +124,6 @@ export class UserService {
         },
       });
 
-      req.afterUpdate = updatedUser;
       this.logger.info(
         `User updated successfully: ${id} (${updatedUser.email})`,
       );
@@ -234,31 +228,26 @@ export class UserService {
     }
   }
 
-  async delete(
-    id: string,
-    token: string,
-    req: AuditRequest,
-  ): Promise<Response> {
+  async delete(id: string, request: RequestWithUser): Promise<Response> {
     this.logger.info(`Delete user request received for ID: ${id}`);
     try {
-      const decoded = this.decodeToken(token);
+      const { user } = request;
 
-      const user = await this.prismaService.user.findFirst({
+      const existinguser = await this.prismaService.user.findFirst({
         where: { id, status: UserStatus.ACTIVE },
       });
 
-      if (!user) {
+      if (!existinguser) {
         this.logger.warn(`Attempt to delete non-existent user: ${id}`);
         throw new NotFoundException('User not found.');
       }
 
-      req.beforeUpdate = user;
       await this.prismaService.user.update({
         where: { id },
         data: {
           archivedAt: new Date().toISOString(),
           status: UserStatus.INACTIVE,
-          updatedBy: decoded.email,
+          updatedBy: user.email,
         },
       });
 
@@ -274,14 +263,6 @@ export class UserService {
       });
       this.handleError(error, 'Error deleting user');
     }
-  }
-
-  private decodeToken(token: string): IUserTokenPayload {
-    const decoded: IUserTokenPayload = this.jwtService.decode(token);
-    if (!decoded || !decoded.email) {
-      throw new BadRequestException('Invalid or expired token.');
-    }
-    return decoded;
   }
 
   private handleError(error: unknown, message: string): never {

@@ -20,7 +20,6 @@ export class AccountService {
   async createAccount(
     dto: CreateAccountDto,
     user: IUserTokenPayload,
-    request: AuditRequest,
   ): Promise<Response> {
     const existingAccount = await this.accountRepository.findByName(
       dto.name,
@@ -39,7 +38,7 @@ export class AccountService {
       updatedById: user.userId,
     });
 
-    request.afterUpdate = account;
+    // request.afterUpdate = account;
 
     return new ResponseBuilder()
       .withStatusCode(201)
@@ -84,14 +83,11 @@ export class AccountService {
     id: string,
     dto: UpdateAccountDto,
     user: IUserTokenPayload,
-    request: AuditRequest,
   ): Promise<Response> {
     const existingAccount = await this.accountRepository.findById(id);
     if (!existingAccount) {
       throw new NotFoundException('Account not found');
     }
-
-    request.beforeUpdate = existingAccount;
 
     if (dto.name && dto.name !== existingAccount.name) {
       const nameConflict = await this.accountRepository.findByName(
@@ -110,25 +106,17 @@ export class AccountService {
       updatedById: user.userId,
     });
 
-    request.afterUpdate = updatedAccount;
-
     return new ResponseBuilder()
       .withData(updatedAccount)
       .withMessage('Account updated successfully')
       .build();
   }
 
-  async deleteAccount(
-    id: string,
-    user: IUserTokenPayload,
-    request: AuditRequest,
-  ): Promise<Response> {
+  async deleteAccount(id: string, user: IUserTokenPayload): Promise<Response> {
     const existingAccount = await this.accountRepository.findById(id);
     if (!existingAccount) {
       throw new NotFoundException('Account not found');
     }
-
-    request.beforeDelete = existingAccount;
     await this.accountRepository.archiveAccount(id, user.userId);
 
     return new ResponseBuilder()

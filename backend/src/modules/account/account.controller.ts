@@ -33,7 +33,7 @@ export class AccountController {
     @Body() dto: CreateAccountDto,
     @Request() request: RequestWithUser,
   ): Promise<Response> {
-    return this.accounts.createAccount(dto, request.user, request);
+    return this.accounts.createAccount(dto, request.user);
   }
 
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
@@ -60,7 +60,7 @@ export class AccountController {
     @Body() dto: UpdateAccountDto,
     @Request() request: RequestWithUser,
   ): Promise<Response> {
-    return this.accounts.updateAccount(id, dto, request.user, request);
+    return this.accounts.updateAccount(id, dto, request.user);
   }
 
   @HttpCode(HttpStatus.OK)
@@ -69,6 +69,6 @@ export class AccountController {
     @Param('id') id: string,
     @Request() request: RequestWithUser,
   ): Promise<Response> {
-    return this.accounts.deleteAccount(id, request.user, request);
+    return this.accounts.deleteAccount(id, request.user);
   }
 }

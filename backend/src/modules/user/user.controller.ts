@@ -13,7 +13,7 @@ import {
   Request,
   ForbiddenException,
 } from '@nestjs/common';
-import { UserRegisterRequestDto, UserUpdateRequestDto } from './dto/user.dto';
+import { UserRegisterRequestDto, UserUpdateRequestDto } from './dto';
 import { ResponseBuilder, type Response } from '@/utils/response.builder';
 import { UserService } from './user.service';
 import {
@@ -24,16 +24,15 @@ import {
 } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 
-import { Role, type User } from '@prisma/client';
+import { Role } from '@prisma/client';
 import { AuditEntity } from '@/audit/decorators/audit-log.decorator';
-import type { AuditRequest, AuthenticatedRequest } from '~/interface';
+import type { AuthenticatedRequest, RequestWithUser } from '~/interface';
 import {
   AppAbility,
   PermissionsGuard,
 } from '@/modules/permissions/guards/permissions.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { AccessToken } from '@/utils/helper';
 
 @Controller('user')
 @ApiBearerAuth('access-token')
@@ -75,10 +74,9 @@ export class UserController {
   })
   async register(
     @Body() userRegisterRequest: UserRegisterRequestDto,
-    @AccessToken() token: string,
-    @Request() req: AuditRequest,
+    @Request() request: RequestWithUser,
   ): Promise<Response> {
-    return this.userService.create(userRegisterRequest, token, req);
+    return this.userService.create(userRegisterRequest, request);
   }
 
   @HttpCode(HttpStatus.OK)
@@ -132,17 +130,16 @@ export class UserController {
   async update(
     @Param('id') id: string,
     @Body() userUpdateRequest: UserUpdateRequestDto,
-    @AccessToken() token: string,
-    @Request() req: AuditRequest & { ability: AppAbility },
+    @Request() request: RequestWithUser & { ability: AppAbility },
   ): Promise<Response> {
-    const ability = req?.ability;
+    const ability = request?.ability;
 
     if (ability.cannot('update', 'User')) {
       throw new ForbiddenException(
         'You do not have permission to update users',
       );
     }
-    return this.userService.update(id, userUpdateRequest, token, req);
+    return this.userService.update(id, userUpdateRequest, request);
   }
 
   @HttpCode(HttpStatus.OK)
@@ -153,9 +150,8 @@ export class UserController {
   })
   async delete(
     @Param('id') id: string,
-    @AccessToken() token: string,
-    @Request() req: AuditRequest,
+    @Request() request: RequestWithUser,
   ): Promise<Response> {
-    return this.userService.delete(id, token, req);
+    return this.userService.delete(id, request);
   }
 }

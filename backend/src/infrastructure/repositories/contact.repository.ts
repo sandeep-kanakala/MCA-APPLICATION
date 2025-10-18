@@ -31,6 +31,27 @@ export class ContactRepository {
     });
   }
 
+  async findContactsByTenantId(
+    tenantId: string,
+    skip = 0,
+    take = 10,
+    select?: Prisma.ContactSelect,
+  ) {
+    return this.prisma.contact.findMany({
+      where: { tenantId, archivedAt: null },
+      select,
+      skip,
+      take,
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async countContactsByTenantId(tenantId: string) {
+    return this.prisma.contact.count({
+      where: { tenantId, archivedAt: null },
+    });
+  }
+
   async countContactsByAccountId(accountId: string) {
     return this.prisma.contact.count({
       where: { accountId, archivedAt: null },

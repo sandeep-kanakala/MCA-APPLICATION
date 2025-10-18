@@ -21,7 +21,7 @@ import {
 import { ContactService } from './contact.service';
 import { ContactCreateRequestDto, ContactUpdateRequestDto } from './dto';
 import { AuditEntity } from '@/audit/decorators/audit-log.decorator';
-import type { RequestWithUser } from '~/interface';
+import type { AuthenticatedRequest, RequestWithUser } from '~/interface';
 import { AuthGuard } from '@nestjs/passport';
 import { Response } from '@/utils/response.builder';
 
@@ -55,13 +55,27 @@ export class ContactController {
   })
   async createContact(
     @Body() contactCreateRequestDto: ContactCreateRequestDto,
-    @Request() request: RequestWithUser,
+    @Request() request: AuthenticatedRequest,
   ): Promise<Response> {
     return await this.contactService.createContact(
       contactCreateRequestDto,
-      request.user,
       request,
     );
+  }
+
+  @Get('/list/')
+  @ApiOperation({
+    summary: 'Get All Contacts By Tenant ID',
+    description: 'Retrieve a list of all users',
+  })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
+  async getAllContacts(
+    @Request() request: RequestWithUser,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ): Promise<Response> {
+    return this.contactService.getAllContactsByTenantId(request, page, limit);
   }
 
   @Get('/list/:accountId')
@@ -71,12 +85,12 @@ export class ContactController {
   })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
-  async getAllContacts(
+  async getAllContactsByAccountId(
     @Param('accountId') accountId: string,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
   ): Promise<Response> {
-    return this.contactService.getContacts(accountId, page, limit);
+    return this.contactService.getContactsByAccountId(accountId, page, limit);
   }
 
   @Get('/:id/:accountId')
@@ -110,7 +124,6 @@ export class ContactController {
     return this.contactService.updateContact(
       id,
       contactUpdateRequestDto,
-      request.user,
       request,
     );
   }
@@ -120,10 +133,6 @@ export class ContactController {
     @Param('contactId') contactId: string,
     @Request() request: RequestWithUser,
   ): Promise<Response> {
-    return await this.contactService.deleteContact(
-      contactId,
-      request.user,
-      request,
-    );
+    return await this.contactService.deleteContact(contactId, request);
   }
 }

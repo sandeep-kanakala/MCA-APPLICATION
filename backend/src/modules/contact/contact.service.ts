@@ -6,17 +6,15 @@ import {
   NotFoundException,
   Inject,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import * as winston from 'winston';
 import { Prisma } from '@prisma/client';
 
 import { ContactCreateRequestDto, ContactUpdateRequestDto } from './dto';
 import { Response, ResponseBuilder } from '@/utils/response.builder';
-import { AuditRequest, IUserTokenPayload } from '~/interface';
+import { AuthenticatedRequest, RequestWithUser } from '~/interface';
 import { ContactRepository } from '@/infrastructure/repositories/contact.repository';
 import { AccountRepository } from '@/infrastructure/repositories/account.repository';
-import { error } from 'console';
 
 @Injectable()
 export class ContactService {
@@ -28,9 +26,9 @@ export class ContactService {
 
   async createContact(
     contactCreateRequestDto: ContactCreateRequestDto,
-    user: IUserTokenPayload,
-    req: AuditRequest,
+    request: AuthenticatedRequest,
   ): Promise<Response> {
+    const { user } = request;
     this.logger.info(`Creating contact for user: ${user.email}`);
     try {
       const { accountId, ...data } = contactCreateRequestDto;
@@ -42,10 +40,10 @@ export class ContactService {
       }
       const contactData: Prisma.ContactCreateInput = {
         ...data,
-        createdBy: { connect: { id: user.userId } },
-        updatedBy: { connect: { id: user.userId } },
+        createdBy: { connect: { id: user.id } },
+        updatedBy: { connect: { id: user.id } },
         tenant: { connect: { id: user.tenantId } },
-        owner: { connect: { id: user.userId } },
+        owner: { connect: { id: user.id } },
         account: { connect: { id: accountId } },
       };
 
@@ -60,8 +58,6 @@ export class ContactService {
         },
       );
 
-      req.afterUpdate = createdContact;
-
       return new ResponseBuilder()
         .withMessage('Contact created successfully.')
         .withStatusCode(201)
@@ -73,7 +69,45 @@ export class ContactService {
     }
   }
 
-  async getContacts(
+  async getAllContactsByTenantId(
+    request: RequestWithUser,
+    page?: number,
+    limit?: number,
+  ): Promise<Response> {
+    const { user } = request;
+    this.logger.info(`Fetching All contacts for tenant ${user.tenantId}`);
+
+    try {
+      const pageNumber = Math.max(Number(page) || 1, 1);
+      const pageSize = Math.max(Number(limit) || 10, 1);
+      const skip = (pageNumber - 1) * pageSize;
+
+      const [totalCount, contactsData] = await Promise.all([
+        this.contactRepository.countContactsByTenantId(user.tenantId),
+        this.contactRepository.findContactsByTenantId(
+          user.tenantId,
+          skip,
+          pageSize,
+        ),
+      ]);
+
+      return new ResponseBuilder()
+        .withMessage('Contacts fetched successfully.')
+        .withData({
+          total: totalCount,
+          page: pageNumber,
+          limit: pageSize,
+          totalPages: Math.ceil(totalCount / pageSize),
+          data: contactsData,
+        })
+        .build();
+    } catch (error: unknown) {
+      this.logger.error('Error fetching contact list', { error });
+      this.handleError(error, 'Error fetching contact list.');
+    }
+  }
+
+  async getContactsByAccountId(
     accountId: string,
     page?: number,
     limit?: number,
@@ -140,9 +174,9 @@ export class ContactService {
   async updateContact(
     id: string,
     contactUpdateDto: ContactUpdateRequestDto,
-    user: IUserTokenPayload,
-    auditRequest: AuditRequest,
+    request: RequestWithUser,
   ): Promise<Response> {
+    const { user } = request;
     this.logger.info(`Updating contact ID: ${id} by user: ${user.email}`);
     try {
       if (!id || typeof id !== 'string' || id.trim() === '') {
@@ -156,25 +190,10 @@ export class ContactService {
         throw new NotFoundException('Contact not found.');
       }
 
-      auditRequest.beforeUpdate = existingContact;
-
-      const updatedContact = await this.contactRepository.updateContact(
-        id,
-        {
-          ...contactUpdateDto,
-          updatedBy: { connect: { id: user.userId } },
-        },
-        {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-          phone: true,
-          title: true,
-        },
-      );
-
-      auditRequest.afterUpdate = updatedContact;
+      const updatedContact = await this.contactRepository.updateContact(id, {
+        ...contactUpdateDto,
+        updatedBy: { connect: { id: user.userId } },
+      });
 
       return new ResponseBuilder()
         .withMessage('Contact updated successfully.')
@@ -186,15 +205,11 @@ export class ContactService {
     }
   }
 
-  async deleteContact(
-    id: string,
-    user: IUserTokenPayload,
-    auditRequest: AuditRequest,
-  ): Promise<Response> {
+  async deleteContact(id: string, request: RequestWithUser): Promise<Response> {
+    const { user } = request;
     this.logger.info(
       `Delete request for contact ID: ${id} by user: ${user.email}`,
     );
-
     try {
       const contact = await this.contactRepository.findById(id);
 
@@ -202,8 +217,6 @@ export class ContactService {
         this.logger.warn(`Attempt to delete non-existent contact: ${id}`);
         throw new NotFoundException('Contact not found.');
       }
-
-      auditRequest.beforeDelete = contact;
 
       await this.contactRepository.softDeleteContact(id, {
         archivedAt: new Date().toISOString(),

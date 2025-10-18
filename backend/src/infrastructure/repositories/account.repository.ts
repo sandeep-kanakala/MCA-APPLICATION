@@ -5,19 +5,19 @@ import { PrismaService } from '@/prisma/prisma.service';
 export class AccountRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  findByName(name: string, tenantId: string) {
+  async findByName(name: string, tenantId: string) {
     return this.prisma.account.findFirst({
       where: { name, tenantId, isArchived: false },
     });
   }
 
-  findById(id: string) {
+  async findById(id: string) {
     return this.prisma.account.findFirst({
       where: { id, isArchived: false },
     });
   }
 
-  createAccount(data: any) {
+  async createAccount(data: any) {
     return this.prisma.account.create({
       data,
       select: {
@@ -44,7 +44,7 @@ export class AccountRepository {
     });
   }
 
-  updateAccount(id: string, data: any) {
+  async updateAccount(id: string, data: any) {
     return this.prisma.account.update({
       where: { id },
       data,
@@ -72,7 +72,7 @@ export class AccountRepository {
     });
   }
 
-  archiveAccount(id: string, updatedById: string) {
+  async archiveAccount(id: string, updatedById: string) {
     return this.prisma.account.update({
       where: { id },
       data: {
@@ -83,13 +83,13 @@ export class AccountRepository {
     });
   }
 
-  countAll() {
+  async countAll() {
     return this.prisma.account.count({
       where: { isArchived: false },
     });
   }
 
-  getPaginated(skip: number, take: number) {
+  async getPaginated(skip: number, take: number) {
     return this.prisma.account.findMany({
       where: { isArchived: false },
       select: {
