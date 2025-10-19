@@ -8,9 +8,6 @@ import {
   ApiOperation,
 } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
-import { RolesGuard } from '@/modules/auth/guards/roles.guard';
-import { Roles } from '@/modules/auth/decorators/roles.decorator';
-import { Role } from '@prisma/client';
 
 @ApiTags('Audit Log')
 @Controller('audit-logs')
@@ -35,8 +32,6 @@ export class AuditLogController {
   constructor(private readonly auditLogService: AuditLogService) {}
 
   @Get()
-  @UseGuards(RolesGuard)
-  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({
     summary: 'Get all audit logs',
     description: 'Retrieve a list of all audit logs',

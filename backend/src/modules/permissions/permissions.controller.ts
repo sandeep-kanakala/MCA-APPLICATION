@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  UseGuards,
+} from '@nestjs/common';
 import { PermissionsService } from './permissions.service';
 import {
   ApiBearerAuth,
@@ -8,16 +17,14 @@ import {
   ApiResponse,
 } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
-import { Role } from '@prisma/client';
-import type { Response } from '@/utils/response.builder';
-import { Roles } from '@/modules/auth/decorators/roles.decorator';
-import { RolesGuard } from '@/modules/auth/guards/roles.guard';
+import { ResponseBuilder, type Response } from '@/utils/response.builder';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 
 @ApiTags('Permissions')
 @Controller('permissions')
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
-@Roles(Role.SUPER_ADMIN, Role.ADMIN)
 @ApiResponse({
   status: 400,
   description: 'The request is malformed or invalid.',
@@ -36,23 +43,12 @@ import { RolesGuard } from '@/modules/auth/guards/roles.guard';
 export class PermissionsController {
   constructor(private readonly permissionsService: PermissionsService) {}
 
-  @Get(':role/permissions')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  @Patch('/assign/:roleName')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Get Permissions by Role',
-    description: 'Retrieve permissions for a specific role',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Permissions retrieved successfully.',
-  })
-  public async getPermissions(@Param('role') role: Role): Promise<Response> {
-    return this.permissionsService.getPermissions(role);
-  }
-
-  @Patch(':role/permissions')
-  @ApiOperation({
-    summary: 'Update Permissions for a Role',
-    description: 'Update permissions associated with a specific role',
+    summary: 'Assign Permissions to Role',
+    description: 'Assign one or more permissions to a given role',
   })
   @ApiResponse({
     status: 200,
@@ -62,24 +58,54 @@ export class PermissionsController {
     schema: {
       type: 'object',
       properties: {
+        tenantId: { type: 'string', example: 'tenant-123' },
         permissions: {
           type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              id: { type: 'string' },
-              active: { type: 'boolean' },
-            },
-          },
+          items: { type: 'string' },
+          example: [
+            'can_create_user',
+            'can_read_user',
+            'can_update_user',
+            'can_delete_user',
+          ],
         },
       },
-      required: ['permissions'],
     },
   })
-  async updatePermissions(
-    @Param('role') role: string,
-    @Body() data: { permissions: { id: string; active: boolean }[] },
+  async assignPermissionsToRole(
+    @Param('roleName') roleName: string,
+    @Body()
+    body: {
+      tenantId: string;
+      permissions: string[];
+    },
   ): Promise<Response> {
-    return this.permissionsService.updatePermissions(role, data);
+    const result = await this.permissionsService.assignPermissionsToRole(
+      body.tenantId,
+      roleName,
+      body.permissions,
+    );
+
+    return new ResponseBuilder()
+      .withMessage('Permissions assigned successfully')
+      .withData(result)
+      .build();
+  }
+
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  @Get('/role/:roleName')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Get Permissions by Role',
+    description: 'Retrieve all permissions assigned to a specific role',
+  })
+  async getPermissionsByRole(
+    @Param('roleName') roleName: string,
+  ): Promise<Response> {
+    const result = await this.permissionsService.getPermissionsByRole(roleName);
+    return new ResponseBuilder()
+      .withMessage('Permissions retrieved successfully')
+      .withData(result)
+      .build();
   }
 }

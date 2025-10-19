@@ -15,6 +15,13 @@ export class UserRepository {
   async findActiveUserById(id: string) {
     return this.prisma.user.findFirst({
       where: { id, status: UserStatus.ACTIVE },
+      include: {
+        roles: {
+          include: {
+            permissions: true,
+          },
+        },
+      },
     });
   }
 

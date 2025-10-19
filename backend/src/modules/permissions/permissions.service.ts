@@ -3,7 +3,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { PrismaService } from '@/prisma/prisma.service';
-import { ResponseBuilder } from '@/utils/response.builder';
 import {
   BadRequestException,
   ConflictException,
@@ -12,8 +11,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { Role } from '@prisma/client';
-import type { Response } from '@/utils/response.builder';
 
 @Injectable()
 export class PermissionsService {
@@ -22,62 +19,68 @@ export class PermissionsService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async getPermissions(role: Role): Promise<Response> {
+  async assignPermissionsToRole(
+    tenantId: string,
+    roleName: string,
+    permissionNames: string[],
+  ) {
     try {
-      if (!role) {
-        throw new BadRequestException('Role is required');
-      }
-      const permissions = await this.prismaService.permission.findMany({
-        where: { role, tenantId: process.env.TENANT_ID },
-        select: { id: true, action: true, subject: true, active: true },
+      const role = await this.prismaService.role.findUnique({
+        where: {
+          tenantId_name: {
+            tenantId,
+            name: roleName,
+          },
+        },
       });
 
-      const grouped = permissions.reduce(
-        (acc, perm) => {
-          if (!acc[perm.subject]) acc[perm.subject] = [];
-          acc[perm.subject].push({
-            id: perm.id,
-            action: perm.action,
-            active: perm.active,
-          });
-          return acc;
-        },
-        {} as Record<string, { id: string; action: string; active: boolean }[]>,
-      );
+      if (!role) {
+        throw new NotFoundException(`Role '${roleName}' not found`);
+      }
 
-      return new ResponseBuilder()
-        .withMessage('Permissions fetched successfully')
-        .withData(grouped)
-        .build();
+      const permissions = await this.prismaService.permission.findMany({
+        where: {
+          tenantId,
+          name: { in: permissionNames },
+        },
+      });
+
+      if (permissions.length === 0) {
+        throw new NotFoundException(`No matching permissions found`);
+      }
+
+      const updatedRole = await this.prismaService.role.update({
+        where: { id: role.id },
+        data: {
+          permissions: {
+            connect: permissions.map((p) => ({
+              tenantId_name: { tenantId, name: p.name },
+            })),
+          },
+        },
+        include: {
+          permissions: true,
+        },
+      });
+
+      return updatedRole;
     } catch (error) {
-      this.handleError(error, 'Error fetching user by ID');
+      this.handleError(error, 'Failed to assign permissions to role');
     }
   }
 
-  async updatePermissions(
-    role: string,
-    data: { permissions: { id: string; active: boolean }[] },
-  ) {
+  getPermissionsByRole(roleName: string) {
     try {
-      if (!role) {
-        throw new BadRequestException('Role is required');
-      }
-
-      const updates = data.permissions.map((perm) =>
-        this.prismaService.permission.update({
-          where: { id: perm.id, tenantId: process.env.TENANT_ID },
-          data: { active: perm.active },
-        }),
-      );
-
-      await Promise.all(updates);
-
-      return new ResponseBuilder()
-        .withMessage('Permissions updated successfully')
-        .withData(null)
-        .build();
+      return this.prismaService.role.findMany({
+        where: {
+          name: roleName,
+        },
+        include: {
+          permissions: true,
+        },
+      });
     } catch (error) {
-      this.handleError(error, 'Error updating permissions');
+      this.handleError(error, 'Failed to retrieve permissions by role');
     }
   }
 

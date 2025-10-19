@@ -10,7 +10,7 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { UserRegisterRequestDto, UserUpdateRequestDto } from './dto';
 import { ResponseBuilder } from '@/utils/response.builder';
-import { UserStatus, Role } from '@prisma/client';
+import { UserStatus } from '@prisma/client';
 import type { Response } from '@/utils/response.builder';
 import type { RequestWithUser } from '~/interface';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
@@ -64,7 +64,16 @@ export class UserService {
           password,
           createdBy: user.email,
           tenant: { connect: { id: tenantId } },
-          role: userRegisterRequest.role as Role,
+          roles: {
+            connect: [
+              {
+                tenantId_name: {
+                  tenantId: tenantId,
+                  name: userRegisterRequest.role,
+                },
+              },
+            ],
+          },
         },
         select: { id: true, email: true, tenantId: true, createdAt: true },
       });
@@ -119,7 +128,7 @@ export class UserService {
           firstName: true,
           lastName: true,
           phoneNo: true,
-          role: true,
+          roles: true,
           updatedAt: true,
         },
       });
@@ -161,7 +170,7 @@ export class UserService {
             lastName: true,
             email: true,
             phoneNo: true,
-            role: true,
+            roles: true,
           },
           skip,
           take: pageSize,
@@ -204,7 +213,7 @@ export class UserService {
           lastName: true,
           email: true,
           phoneNo: true,
-          role: true,
+          roles: true,
           status: true,
         },
       });

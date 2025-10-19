@@ -71,6 +71,14 @@ export class AuthController {
   @ApiBody({
     type: LoginDto,
   })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Login successful',
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Invalid credentials',
+  })
   signin(@Body() dto: LoginDto) {
     return this.authService.signin(dto);
   }

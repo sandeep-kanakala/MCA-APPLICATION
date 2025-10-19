@@ -152,10 +152,40 @@ enum AmendmentType {
   RESUME
 }
 
-enum Role {
-  SUPER_ADMIN
-  ADMIN
-  USER
+enum Subject {
+  Tenant
+  Team
+  User
+  Permission
+  UserTeam
+  Account
+  Contact
+  Lead
+  Opportunity
+  OpportunityContactRole
+  Product
+  PriceBook
+  PriceBookEntry
+  ProductBundle
+  ProductBundleItem
+  PriceList
+  PriceListEntry
+  Quote
+  QuoteLineItem
+  Order
+  OrderAmendment
+  OrderItem
+  Campaign
+  CampaignContactMember
+  CampaignLeadMember
+  Subscription
+  SubscriptionItem
+  Asset
+  Task
+  Event
+  EventParticipant
+  Note
+  Attachment
 }
 
 // --------------------- Core / System ------------------------
@@ -194,6 +224,7 @@ model Tenant {
   notes              Note[]
   attachments        Attachment[]
   Permission         Permission[]
+  Role               Role[]
 }
 
 model Team {
@@ -209,6 +240,32 @@ model Team {
   archivedAt DateTime?
 
   @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+model Role {
+  id          String       @id @default(cuid())
+  tenantId    String
+  name        String
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  users       User[]       @relation("UserRoles")
+  permissions Permission[] @relation("RolePermissions")
+
+  @@unique([tenantId, name], name: "tenantId_name")
+  @@index([tenantId])
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  description String?
+  subject     Subject?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  Role   Role[] @relation("RolePermissions")
+
+  @@unique([tenantId, name], name: "tenantId_name")
   @@index([tenantId])
 }
 
@@ -234,7 +291,7 @@ model User {
   otp        String?
 
   tenant  Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  role    Role
+  roles   Role[]     @relation("UserRoles")
   manager User?      @relation("UserManager", fields: [managerId], references: [id])
   reports User[]     @relation("UserManager")
   teams   UserTeam[]
@@ -273,20 +330,6 @@ model User {
   uploadedAttachments Attachment[] @relation("AttachmentUploadedBy")
 
   @@unique([tenantId, email])
-  @@index([tenantId])
-}
-
-model Permission {
-  id       String  @id @default(cuid())
-  tenantId String
-  subject  String // e.g. "User", "Account", "Lead"
-  action   String // e.g. "create", "read", "update", "delete"
-  active   Boolean @default(false)
-
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  role   Role
-
-  @@unique([tenantId, role, subject, action])
   @@index([tenantId])
 }
 
@@ -362,7 +405,7 @@ model Contact {
   tenantId    String
   accountId   String
   email       String
-  phone       String   @db.VarChar(32)
+  phone       String    @db.VarChar(32)
   firstName   String
   middleName  String?
   lastName    String
@@ -375,11 +418,11 @@ model Contact {
   isArchived  Boolean   @default(false)
   archivedAt  DateTime?
 
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   account   Account @relation(fields: [accountId], references: [id])
-  owner     User?    @relation("ContactOwner", fields: [ownerId], references: [id])
-  createdBy User?    @relation("ContactCreatedBy", fields: [createdById], references: [id])
-  updatedBy User?    @relation("ContactUpdatedBy", fields: [updatedById], references: [id])
+  owner     User?   @relation("ContactOwner", fields: [ownerId], references: [id])
+  createdBy User?   @relation("ContactCreatedBy", fields: [createdById], references: [id])
+  updatedBy User?   @relation("ContactUpdatedBy", fields: [updatedById], references: [id])
 
   oppRoles            OpportunityContactRole[]
   campaignMemberships CampaignContactMember[]

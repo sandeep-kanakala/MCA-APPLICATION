@@ -21,25 +21,19 @@ import {
   ApiOperation,
   ApiBody,
   ApiQuery,
-  ApiTags,
   ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
-
-import { Role } from '@prisma/client';
 import { AuditEntity } from '@/audit/decorators/audit-log.decorator';
 import type { AuthenticatedRequest, RequestWithUser } from '~/interface';
-import {
-  AppAbility,
-  PermissionsGuard,
-} from '@/modules/permissions/guards/permissions.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { Permissions } from '../permissions/permissions.decorator';
+import { PermissionsGuard } from '../permissions/permissions.guard';
 
 @ApiTags('User')
 @Controller('user')
 @ApiBearerAuth('access-token')
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(AuthGuard('jwt'), PermissionsGuard)
 @AuditEntity('User')
 @ApiResponse({
   status: 400,
@@ -82,9 +76,8 @@ export class UserController {
   }
 
   @HttpCode(HttpStatus.CREATED)
-  @UseGuards(RolesGuard)
-  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @Post('/create')
+  @Permissions('can_create_user')
   @ApiOperation({
     summary: 'User Registration',
     description: 'Register a new user',
@@ -100,6 +93,7 @@ export class UserController {
 
   @HttpCode(HttpStatus.OK)
   @Get('/list')
+  @Permissions('can_read_user')
   @ApiOperation({
     summary: 'Get All Users',
     description: 'Retrieve a list of all users',
@@ -115,9 +109,8 @@ export class UserController {
   }
 
   @HttpCode(HttpStatus.OK)
-  @UseGuards(RolesGuard)
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @Get('/:userId')
+  @Permissions('can_read_user')
   @ApiOperation({
     summary: 'Get User by ID',
     description: 'Retrieve user details by user ID',
@@ -131,6 +124,7 @@ export class UserController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(PermissionsGuard)
   @Patch('/update/:id')
+  @Permissions('can_update_user')
   @ApiOperation({
     summary: 'Update User',
     description: 'Update user details by user ID',
@@ -141,20 +135,14 @@ export class UserController {
   async update(
     @Param('id') id: string,
     @Body() userUpdateRequest: UserUpdateRequestDto,
-    @Request() request: RequestWithUser & { ability: AppAbility },
+    @Request() request: RequestWithUser,
   ): Promise<Response> {
-    const ability = request?.ability;
-
-    if (ability.cannot('update', 'User')) {
-      throw new ForbiddenException(
-        'You do not have permission to update users',
-      );
-    }
     return this.userService.update(id, userUpdateRequest, request);
   }
 
   @HttpCode(HttpStatus.OK)
   @Delete('/delete/:id')
+  @Permissions('can_delete_user')
   @ApiOperation({
     summary: 'Delete User',
     description: 'Delete user by user ID',
