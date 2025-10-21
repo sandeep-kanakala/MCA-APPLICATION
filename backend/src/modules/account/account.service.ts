@@ -9,6 +9,11 @@ import { ResponseBuilder } from '@/utils/response.builder';
 import type { Response } from '@/utils/response.builder';
 import { JwtService } from '@nestjs/jwt';
 import { AuditRequest, IUserTokenPayload } from '~/interface';
+import {
+  toAccountResponseDto,
+  toPrismaCreateAccountData,
+  toPrismaUpdateAccountData,
+} from '@/utils/mapper/account.mapper';
 
 @Injectable()
 export class AccountService {
@@ -25,25 +30,18 @@ export class AccountService {
       dto.name,
       user.tenantId,
     );
-
     if (existingAccount) {
       throw new ConflictException('Account with this name already exists');
     }
 
-    const account = await this.accountRepository.createAccount({
-      ...dto,
-      tenantId: user.tenantId,
-      ownerId: user.userId,
-      createdById: user.userId,
-      updatedById: user.userId,
-    });
-
-    // request.afterUpdate = account;
+    const account = await this.accountRepository.createAccount(
+      toPrismaCreateAccountData(dto, user),
+    );
 
     return new ResponseBuilder()
       .withStatusCode(201)
       .withMessage('Account created successfully')
-      .withData(account)
+      .withData(toAccountResponseDto(account))
       .build();
   }
 
@@ -64,7 +62,7 @@ export class AccountService {
         page: pageNumber,
         limit: pageSize,
         totalPages: Math.ceil(totalCount / pageSize),
-        data: accounts,
+        data: accounts.map(toAccountResponseDto),
       })
       .build();
   }
@@ -74,7 +72,7 @@ export class AccountService {
     if (!account) throw new NotFoundException('Account not found');
 
     return new ResponseBuilder()
-      .withData(account)
+      .withData(toAccountResponseDto(account))
       .withMessage('Account retrieved successfully')
       .build();
   }
@@ -85,29 +83,25 @@ export class AccountService {
     user: IUserTokenPayload,
   ): Promise<Response> {
     const existingAccount = await this.accountRepository.findById(id);
-    if (!existingAccount) {
-      throw new NotFoundException('Account not found');
-    }
+    if (!existingAccount) throw new NotFoundException('Account not found');
 
     if (dto.name && dto.name !== existingAccount.name) {
       const nameConflict = await this.accountRepository.findByName(
         dto.name,
         user.tenantId,
       );
-
       if (nameConflict && nameConflict.id !== id) {
         throw new ConflictException('Account with this name already exists');
       }
     }
 
-    const updatedAccount = await this.accountRepository.updateAccount(id, {
-      ...dto,
-      ownerId: user.userId,
-      updatedById: user.userId,
-    });
+    const updatedAccount = await this.accountRepository.updateAccount(
+      id,
+      toPrismaUpdateAccountData(dto, user.id),
+    );
 
     return new ResponseBuilder()
-      .withData(updatedAccount)
+      .withData(toAccountResponseDto(updatedAccount))
       .withMessage('Account updated successfully')
       .build();
   }
@@ -117,7 +111,7 @@ export class AccountService {
     if (!existingAccount) {
       throw new NotFoundException('Account not found');
     }
-    await this.accountRepository.archiveAccount(id, user.userId);
+    await this.accountRepository.archiveAccount(id, user.id);
 
     return new ResponseBuilder()
       .withMessage('Account deleted successfully')

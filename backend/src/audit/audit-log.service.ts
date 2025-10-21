@@ -26,7 +26,7 @@ export class AuditLogService {
     response?: any;
   }) {
     const performedBy = {
-      userId: req?.user?.userId || 'system',
+      userId: req?.user?.id || 'system',
       tenantId: req?.user?.tenantId || 'default',
       email: req?.user?.email || 'unknown',
     };

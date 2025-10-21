@@ -192,7 +192,7 @@ export class ContactService {
 
       const updatedContact = await this.contactRepository.updateContact(id, {
         ...contactUpdateDto,
-        updatedBy: { connect: { id: user.userId } },
+        updatedBy: { connect: { id: user.id } },
       });
 
       return new ResponseBuilder()
@@ -221,7 +221,7 @@ export class ContactService {
       await this.contactRepository.softDeleteContact(id, {
         archivedAt: new Date().toISOString(),
         isArchived: true,
-        updatedBy: { connect: { id: user.userId } },
+        updatedBy: { connect: { id: user.id } },
       });
 
       return new ResponseBuilder()

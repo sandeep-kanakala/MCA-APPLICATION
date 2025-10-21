@@ -1,5 +1,5 @@
 export interface IUserTokenPayload {
-  userId: string;
+  id: string;
   email: string;
   tenantId: string;
   iat: number;
