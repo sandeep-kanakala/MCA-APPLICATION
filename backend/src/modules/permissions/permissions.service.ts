@@ -11,6 +11,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Subject } from '@prisma/client';
 
 @Injectable()
 export class PermissionsService {
@@ -69,9 +70,9 @@ export class PermissionsService {
     }
   }
 
-  getPermissionsByRole(roleName: string) {
+  async getPermissionsByRole(roleName: string) {
     try {
-      return this.prismaService.role.findMany({
+      const data = await this.prismaService.role.findMany({
         where: {
           name: roleName,
         },
@@ -79,8 +80,53 @@ export class PermissionsService {
           permissions: true,
         },
       });
+
+      return data;
     } catch (error) {
       this.handleError(error, 'Failed to retrieve permissions by role');
+    }
+  }
+
+  async createRoles(role: string) {
+    try {
+      const res = await this.prismaService.role.create({
+        data: {
+          tenantId: process.env.TENANT_ID!,
+          name: role,
+        },
+        select: {
+          id: true,
+          name: true,
+          tenantId: true,
+        },
+      });
+
+      return res;
+    } catch (error) {
+      // console.log('error', error);
+      this.handleError(error, 'Failed to create default roles and permissions');
+    }
+  }
+
+  async createPermissions(permissions: { name: string; subject: Subject }[]) {
+    try {
+      const tenantId = process.env.TENANT_ID!;
+
+      const permissionData = permissions.map((permission) => ({
+        tenantId,
+        name: permission.name,
+        description: `Permission for ${permission.name}`,
+        subject: permission.subject || '',
+      }));
+
+      const res = await this.prismaService.permission.createMany({
+        data: permissionData,
+        skipDuplicates: true,
+      });
+
+      return res;
+    } catch (error) {
+      this.handleError(error, 'Failed to create permissions');
     }
   }
 

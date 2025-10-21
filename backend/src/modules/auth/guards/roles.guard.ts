@@ -30,7 +30,7 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('Access denied: insufficient permissions');
     }
 
-    if (!requiredRoles.every((role: string) => roles.includes(role))) {
+    if (!requiredRoles.some((role: string) => roles.includes(role))) {
       throw new ForbiddenException('Access denied: insufficient permissions');
     }
 

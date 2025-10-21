@@ -8,11 +8,13 @@ import {
   ApiOperation,
 } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
+import { RolesGuard } from '@/modules/auth/guards/roles.guard';
+import { Roles } from '@/modules/auth/decorators/roles.decorator';
 
 @ApiTags('Audit Log')
 @Controller('audit-logs')
 @ApiBearerAuth('access-token')
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(AuthGuard('jwt'), RolesGuard)
 @ApiResponse({
   status: 400,
   description: 'The request is malformed or invalid.',
@@ -32,6 +34,7 @@ export class AuditLogController {
   constructor(private readonly auditLogService: AuditLogService) {}
 
   @Get()
+  @Roles('SUPER_ADMIN', 'ADMIN')
   @ApiOperation({
     summary: 'Get all audit logs',
     description: 'Retrieve a list of all audit logs',
