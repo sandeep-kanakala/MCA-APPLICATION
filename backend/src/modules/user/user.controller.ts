@@ -67,7 +67,18 @@ export class UserController {
     description: 'User role retrieved successfully.',
   })
   getRole(@Request() req: AuthenticatedRequest): Response {
-    return new ResponseBuilder().withData(req.user).build();
+    if (!req.user) {
+      return new ResponseBuilder()
+        .withMessage('User not authenticated')
+        .build();
+    }
+
+    const { password, ...safeUser } = req.user;
+
+    return new ResponseBuilder()
+      .withMessage('Success')
+      .withData(safeUser)
+      .build();
   }
 
   @HttpCode(HttpStatus.CREATED)

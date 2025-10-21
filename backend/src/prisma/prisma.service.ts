@@ -3,6 +3,7 @@ import {
   OnModuleInit,
   OnModuleDestroy,
   Inject,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
@@ -22,9 +23,13 @@ export class PrismaService
     try {
       await this.$connect();
       this.logger.info('Connected to database');
-      return;
-    } catch (error) {
-      throw error;
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        this.logger.error(`Database connection failed: ${error.message}`);
+      } else {
+        this.logger.error('Unknown error while connecting to database');
+      }
+      throw new InternalServerErrorException('Failed to connect to database');
     }
   }
   async onModuleDestroy() {

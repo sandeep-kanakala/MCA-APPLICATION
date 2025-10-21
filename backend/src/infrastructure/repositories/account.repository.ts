@@ -77,4 +77,18 @@ export class AccountRepository {
       orderBy: { createdAt: 'desc' },
     });
   }
+
+  getAccountBycontact(contactId: string) {
+    return this.prisma.account.findFirst({
+      where: {
+        contacts: {
+          some: { id: contactId },
+        },
+        isArchived: false,
+      },
+      include: {
+        contacts: true,
+      },
+    });
+  }
 }

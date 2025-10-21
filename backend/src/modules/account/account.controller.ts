@@ -24,7 +24,7 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import type { Response } from '@/utils/response.builder';
-import type { RequestWithUser } from '~/interface';
+import type { AuditRequest } from '~/interface';
 import { AuditEntity } from '@/audit/decorators/audit-log.decorator';
 
 @Controller('accounts')
@@ -60,14 +60,14 @@ export class AccountController {
   @ApiBody({ type: CreateAccountDto })
   public async create(
     @Body() dto: CreateAccountDto,
-    @Request() request: RequestWithUser,
+    @Request() request: AuditRequest,
   ): Promise<Response> {
-    return this.accounts.createAccount(dto, request.user);
+    return this.accounts.createAccount(dto, request);
   }
 
+  @HttpCode(HttpStatus.OK)
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
-  @HttpCode(HttpStatus.OK)
   @Get('/list')
   @ApiOperation({
     summary: 'Get All Accounts',
@@ -105,9 +105,9 @@ export class AccountController {
   public async update(
     @Param('id') id: string,
     @Body() dto: UpdateAccountDto,
-    @Request() request: RequestWithUser,
+    @Request() request: AuditRequest,
   ): Promise<Response> {
-    return this.accounts.updateAccount(id, dto, request.user);
+    return this.accounts.updateAccount(id, dto, request);
   }
 
   @HttpCode(HttpStatus.OK)
@@ -120,8 +120,16 @@ export class AccountController {
   @ApiResponse({ status: 404, description: 'Account not found.' })
   public async delete(
     @Param('id') id: string,
-    @Request() request: RequestWithUser,
+    @Request() request: AuditRequest,
   ): Promise<Response> {
-    return this.accounts.deleteAccount(id, request.user);
+    return this.accounts.deleteAccount(id, request);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Get('/contact/:id')
+  async getAccountDetailsByContactId(
+    @Param('id') id: string,
+  ): Promise<Response> {
+    return this.accounts.getAccountByContactId(id);
   }
 }

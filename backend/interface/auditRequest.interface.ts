@@ -7,5 +7,5 @@ export interface AuditRequest extends Request {
   beforeUpdate?: any;
   afterUpdate?: any;
   beforeDelete?: any;
-  user?: IUserTokenPayload;
+  user: IUserTokenPayload;
 }
