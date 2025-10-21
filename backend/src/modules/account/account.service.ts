@@ -11,7 +11,7 @@ import { CreateAccountDto, UpdateAccountDto } from './dto/account.dto';
 import { ResponseBuilder } from '@/utils/response.builder';
 import type { Response } from '@/utils/response.builder';
 import { JwtService } from '@nestjs/jwt';
-import { AuditRequest, IUserTokenPayload } from '~/interface';
+import { AuditRequest } from '~/interface';
 import {
   toAccountResponseDto,
   toPrismaCreateAccountData,

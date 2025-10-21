@@ -78,7 +78,7 @@ export class AccountRepository {
     });
   }
 
-  getAccountBycontact(contactId: string) {
+  async getAccountBycontact(contactId: string) {
     return this.prisma.account.findFirst({
       where: {
         contacts: {
