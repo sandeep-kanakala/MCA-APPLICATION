@@ -1,4 +1,4 @@
-import { BadgeCheck, ChevronsUpDown, CreditCard, LogOut, Sparkles } from 'lucide-react';
+import { BadgeCheck, ChevronsUpDown, LogOut } from 'lucide-react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -16,6 +16,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
+import { useLogout } from '@/app/hooks';
 
 export function NavUser({
   user,
@@ -27,6 +28,7 @@ export function NavUser({
   };
 }) {
   const { isMobile } = useSidebar();
+  const { logout } = useLogout();
 
   return (
     <SidebarMenu>
@@ -39,7 +41,7 @@ export function NavUser({
             >
               <Avatar className="h-8 w-8 rounded-lg">
                 <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback className="rounded-lg bg-[#D4E2FD]">CN</AvatarFallback>
+                <AvatarFallback className="rounded-lg bg-[#D4E2FD]">{user.name}</AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{user.name}</span>
@@ -58,7 +60,7 @@ export function NavUser({
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm ">
                 <Avatar className="h-8 w-8 rounded-lg">
                   <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="rounded-lg bg-[#D4E2FD]">CN</AvatarFallback>
+                  <AvatarFallback className="rounded-lg bg-[#D4E2FD]">{user.name}</AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{user.name}</span>
@@ -67,19 +69,7 @@ export function NavUser({
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuGroup className="">
-              <DropdownMenuItem
-                className={`
 
-                  hover:bg-[#D4E2FD]  hover:text-[#274AFF] hover:border-l-2 hover:border-[#274AFF]
-                  transition-colors duration-200 rounded-none cursor-pointer 
-                `}
-              >
-                <Sparkles />
-                Upgrade to Pro
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem
                 className={`
@@ -89,21 +79,12 @@ export function NavUser({
                 `}
               >
                 <BadgeCheck />
-                Account
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className={`
-
-                  hover:bg-[#D4E2FD]  hover:text-[#274AFF] hover:border-l-2 hover:border-[#274AFF]
-                  transition-colors duration-200 rounded-none cursor-pointer
-                `}
-              >
-                <CreditCard />
-                Billing
+                Profile
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem
+              onClick={logout}
               className={`
 
                   hover:bg-red-100  hover:text-[red] hover:border-l-2 hover:border-[red]

@@ -1,4 +1,4 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
 // Global state interface
 export interface GlobalState {
@@ -23,14 +23,13 @@ const globalSlice = createSlice({
     decrement: (state) => {
       state.value -= 1;
     },
-    setLoader: (state, action: any) => {
+    setLoader: (state, action: PayloadAction<boolean>) => {
       state.loader = action.payload;
     },
   },
 });
 
 // Export actions
-export const { increment, decrement, setLoader } = globalSlice.actions;
-
+export const globalSliceActions = globalSlice.actions;
 // Export reducer
 export default globalSlice.reducer;

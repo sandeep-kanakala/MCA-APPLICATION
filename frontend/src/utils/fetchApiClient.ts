@@ -1,6 +1,6 @@
 // utils/fetchApiClient.ts
-
 import { API_URL, APP_ENV } from '@/config/runtimeConfig';
+import { getAuthToken } from '@/utils';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
@@ -51,11 +51,17 @@ async function fetchRequest(
   const { method = 'GET', headers = {}, params, body } = options;
   const logEnd = createLogger(`${method} ${url}`);
 
-  const queryString = method === 'GET' && params ? buildQueryString(params) : '';
-  const authToken = getAuthToken ? getAuthToken() : null;
-
   try {
-    const response = await fetch(`${baseURL}${url}${queryString}`, {
+    const queryString = method === 'GET' && params ? buildQueryString(params) : '';
+
+    const fullURL =
+      url.startsWith('http://') || url.startsWith('https://')
+        ? url + queryString
+        : `${baseURL}${url}${queryString}`;
+
+    const authToken = getAuthToken ? getAuthToken() : null;
+
+    const response = await fetch(fullURL, {
       method,
       headers: {
         ...defaultHeaders,
@@ -88,7 +94,6 @@ async function fetchRequest(
  */
 const fetchApiClient = (() => {
   const baseURL = API_URL || '';
-  const getAuthToken = () => localStorage.getItem('token');
 
   return {
     get: (

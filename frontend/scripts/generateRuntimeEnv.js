@@ -21,4 +21,4 @@ const outPath = path.resolve(process.cwd(), 'public/runtime-env.js');
 const content = `window.__RUNTIME_CONFIG__ = ${JSON.stringify(runtimeConfig, null, 2)};`;
 
 fs.writeFileSync(outPath, content);
-console.log(`✅ runtime-env.js generated for "${RUNTIME_ENV}" at ${outPath}`);
+console.log(` runtime-env.js generated for "${RUNTIME_ENV}" at ${outPath}`);

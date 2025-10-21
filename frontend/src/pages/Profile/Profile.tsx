@@ -80,7 +80,7 @@ export default function ProfilePage() {
             <div className="text-xs text-black">Forgot your password?</div>
             <a
               href="#"
-              className="text-xs font-bold  underline text-primary text-primary transition-opacity duration-200 mt-1"
+              className="text-xs font-bold  underline text-primary  transition-opacity duration-200 mt-1"
             >
               Reset password
             </a>
@@ -102,7 +102,7 @@ export default function ProfilePage() {
                   />
                   <span
                     onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2  hover:text-[rgba(39,74,255,0.9)] transition-opacity duration-200 cursor-pointer"
+                    className="absolute right-3 top-1/2 -translate-y-1/2  hover:text-primary transition-opacity duration-200 cursor-pointer"
                   >
                     {showCurrentPassword ? (
                       <EyeOff className="w-4 h-4" />
@@ -150,7 +150,7 @@ export default function ProfilePage() {
                     />
                     <span
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2  hover:text-[rgba(39,74,255,0.9)] transition-opacity duration-200 cursor-pointer"
+                      className="absolute right-3 top-1/2 -translate-y-1/2  hover:text-primary transition-opacity duration-200 cursor-pointer"
                     >
                       {showConfirmPassword ? (
                         <EyeOff className="w-4 h-4" />

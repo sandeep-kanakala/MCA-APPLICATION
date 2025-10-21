@@ -4,6 +4,7 @@ import { router } from '@/routes/routes';
 import { Provider } from 'react-redux';
 import appStore from './app/store';
 import Loader from './features/Loader';
+import { Toaster } from './components/ui/sonner';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         }
       >
         <RouterProvider router={router} />
+        <Toaster />
       </Suspense>
     </Provider>
   );

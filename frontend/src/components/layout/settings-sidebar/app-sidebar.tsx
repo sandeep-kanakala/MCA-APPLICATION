@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Briefcase, LayoutDashboard } from 'lucide-react';
+import { Briefcase, LayoutDashboard, Undo2 } from 'lucide-react';
 
 import { NavSecondary } from '@/components/sideBar/nav-secondary';
 import { NavUser } from '@/components/sideBar/nav-user';
@@ -15,12 +15,13 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { Link, useLocation } from 'react-router-dom';
+import { useUserRole } from '@/app/hooks';
 
 const settingMenuItems = {
   items: [
     {
       title: 'Users Management',
-      url: '/setting/Users',
+      url: '/setting/users',
       icon: LayoutDashboard,
     },
     {
@@ -29,20 +30,28 @@ const settingMenuItems = {
       icon: Briefcase,
     },
   ],
-  navSecondary: [],
+  navSecondary: [
+    {
+      title: 'back to app',
+      url: 'apps/sales/accounts',
+      icon: Undo2,
+    },
+  ],
 };
-const UserData = {
-  name: 'PA',
-  email: 'pavan@example.com',
-  avatar: '/avatars/shadcn.jpg',
-};
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const location = useLocation();
   const currentPath = location.pathname;
-
+  const { data }: any = useUserRole();
+  const firstLetter = data.email?.slice(0, 2).toUpperCase();
   // const isSettingsPage = currentPath.startsWith('/setting');
   const currentNav = settingMenuItems;
 
+  const UserData = {
+    name: firstLetter,
+    email: `${data.email}`,
+    avatar: '/avatars/shadcn.jpg',
+  };
   const isActive = (path: string) => currentPath.startsWith(path);
   return (
     <Sidebar variant="inset" {...props}>

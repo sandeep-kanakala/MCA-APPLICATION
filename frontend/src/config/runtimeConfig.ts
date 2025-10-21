@@ -2,7 +2,7 @@
 // src/config/runtimeConfig.ts
 export const getRuntimeEnv = (key: string, fallback = ''): string => {
   if (typeof window !== 'undefined') {
-    const value = window.__RUNTIME_CONFIG__?.[key]; // ✅ no TS error
+    const value = window.__RUNTIME_CONFIG__?.[key]; //  no TS error
     if (value) return value;
   }
 

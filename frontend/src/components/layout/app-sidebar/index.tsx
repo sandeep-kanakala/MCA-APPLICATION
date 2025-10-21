@@ -23,10 +23,13 @@ export default function Sidebar({ children }: { children?: React.ReactNode }) {
   }
   const breadcrumbs = generateBreadcrumbs(location.pathname);
   return (
-    <SidebarProvider>
+    <SidebarProvider className="">
       <div className="flex h-screen overflow-hidden">
-        <AppSidebar />
-        <SidebarInset className="!m-0 !rounded-none flex-1 flex flex-col h-screen overflow-hidden">
+        <div>
+          {' '}
+          <AppSidebar />
+        </div>
+        <SidebarInset className="!m-0 !rounded-none flex-1 flex flex-col  w-svw h-full overflow-y-auto">
           <header className="flex h-16 shrink-0 items-center gap-2">
             <div className="flex items-center  px-4">
               <SidebarTrigger className="-ml-1" />
@@ -34,25 +37,28 @@ export default function Sidebar({ children }: { children?: React.ReactNode }) {
               <Breadcrumb>
                 <BreadcrumbList>
                   <div className="flex">
-                    {breadcrumbs.map((crumb, index) => {
-                      const isLast = index === breadcrumbs.length - 1;
-                      return (
-                        <BreadcrumbItem key={crumb.url}>
-                          {isLast ? (
-                            <BreadcrumbPage className="font-bold">{crumb.name}</BreadcrumbPage>
-                          ) : (
-                            <>
-                              <BreadcrumbLink asChild>
-                                <Link to={crumb.url} className="font-bold">
-                                  {crumb.name}
-                                </Link>
-                              </BreadcrumbLink>
-                              <BreadcrumbSeparator />
-                            </>
-                          )}
-                        </BreadcrumbItem>
-                      );
-                    })}
+                    {breadcrumbs
+                      .filter((crumb) => crumb.name !== 'Sales') //filter out "Sales"
+                      .map((crumb, index, filtered) => {
+                        const isLast = index === filtered.length - 1;
+
+                        return (
+                          <BreadcrumbItem key={crumb.url}>
+                            {isLast ? (
+                              <BreadcrumbPage className="font-bold">{crumb.name}</BreadcrumbPage>
+                            ) : (
+                              <>
+                                <BreadcrumbLink asChild>
+                                  <Link to={crumb.url} className="font-bold">
+                                    {crumb.name}
+                                  </Link>
+                                </BreadcrumbLink>
+                                <BreadcrumbSeparator />
+                              </>
+                            )}
+                          </BreadcrumbItem>
+                        );
+                      })}
                   </div>
                 </BreadcrumbList>
               </Breadcrumb>

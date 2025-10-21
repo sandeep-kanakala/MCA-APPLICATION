@@ -23,6 +23,7 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { Link, useLocation } from 'react-router-dom';
+import { useUserRole } from '@/app/hooks';
 
 const appsMenuItems = {
   items: [
@@ -33,7 +34,7 @@ const appsMenuItems = {
     },
     {
       title: 'Accounts',
-      url: '/account',
+      url: 'apps/sales/accounts',
       icon: Briefcase,
     },
 
@@ -57,38 +58,43 @@ const appsMenuItems = {
   navSecondary: [
     {
       title: 'Setting',
-      url: '/setting',
+      url: '/setting/users',
       icon: Settings,
     },
   ],
 };
 
-const UserData = {
-  name: 'PA',
-  email: 'pavan@example.com',
-  avatar: '/avatars/shadcn.jpg',
-};
 export default function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const location = useLocation();
   const currentPath = location.pathname;
+  const { data }: any = useUserRole();
+  const firstLetter = data.email?.slice(0, 2).toUpperCase();
 
+  const UserData = {
+    name: firstLetter,
+    email: `${data.email}`,
+    avatar: '/avatars/shadcn.jpg',
+  };
   // const isSettingsPage = currentPath.startsWith('/setting');
   const currentNav = appsMenuItems;
 
-  const isActive = (path: string) => currentPath.startsWith(path);
+  const isActive = (path: string) => currentPath.includes(path);
   return (
     <Sidebar variant="inset" {...props}>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link to="#">
-                <div className="bg-[#D4E2FD] text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                  <Briefcase className="size-4" />
-                </div>
+              <Link to="/apps">
+                <img
+                  width={'80px'}
+                  alt="logo"
+                  className=""
+                  height={'80px'}
+                  src="/public/assets/logo-white.png"
+                />
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">Multichoice</span>
-                  <span className="truncate text-xs">Enterprise</span>
                 </div>
               </Link>
             </SidebarMenuButton>
