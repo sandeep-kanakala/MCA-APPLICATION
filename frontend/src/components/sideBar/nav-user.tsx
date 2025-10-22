@@ -16,8 +16,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { useLogout } from '@/app/hooks';
-
+import { useLogout, useCustomNavigate } from '@/app/hooks';
 export function NavUser({
   user,
 }: {
@@ -29,6 +28,7 @@ export function NavUser({
 }) {
   const { isMobile } = useSidebar();
   const { logout } = useLogout();
+  const { navigate } = useCustomNavigate();
 
   return (
     <SidebarMenu>
@@ -72,6 +72,7 @@ export function NavUser({
 
             <DropdownMenuGroup>
               <DropdownMenuItem
+                onClick={() => navigate('/profile')}
                 className={`
 
                   hover:bg-[#D4E2FD]  hover:text-[#274AFF] hover:border-l-2 hover:border-[#274AFF]

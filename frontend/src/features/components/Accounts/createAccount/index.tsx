@@ -34,7 +34,17 @@ const selectOptions: Partial<Record<keyof FormValues, string[]>> = {
     'Agriculture',
     'Software Development',
   ],
-  type: ['Private Limited', 'LLP', 'Public Limited', 'Partnership', 'Customer', 'Partner', 'Vendor', 'Distributor', 'Supplier'],
+  type: [
+    'Private Limited',
+    'LLP',
+    'Public Limited',
+    'Partnership',
+    'Customer',
+    'Partner',
+    'Vendor',
+    'Distributor',
+    'Supplier',
+  ],
 };
 
 const getInputType = (key: string) => {
@@ -49,7 +59,7 @@ interface AccountCreateProps {
 }
 
 const AccountCreate: React.FC<AccountCreateProps> = ({ onAccountCreated }) => {
-    const [isSubmitting, setIsSubmitting] = React.useState(false); 
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const {
     register,
@@ -78,50 +88,47 @@ const AccountCreate: React.FC<AccountCreateProps> = ({ onAccountCreated }) => {
     },
   });
 
-    const onSubmit = (formData: FormValues, onClose: () => void) => {
-        setIsSubmitting(true);
+  const onSubmit = (formData: FormValues, onClose: () => void) => {
+    setIsSubmitting(true);
 
-        const filteredData = Object.fromEntries(
-            Object.entries(formData).filter(
-                ([_, value]) => value !== undefined && value !== '' && value !== 'none'
-            )
-        );
+    const filteredData = Object.fromEntries(
+      Object.entries(formData).filter(
+        ([_, value]) => value !== undefined && value !== '' && value !== 'none',
+      ),
+    );
 
-        const apiPromise = accountService.create(filteredData).then((res: any) => {
-            if (res.statusCode === 201) {
-                reset(); 
-                onClose(); 
-                onAccountCreated(); 
-                return res; 
-            } else {
-                throw new Error(res.message || 'Account creation failed');
-            }
-        });
+    const apiPromise = accountService.create(filteredData).then((res: any) => {
+      if (res.statusCode === 201) {
+        reset();
+        onClose();
+        onAccountCreated();
+        return res;
+      } else {
+        throw new Error(res.message || 'Account creation failed');
+      }
+    });
 
-        apiPromise.finally(() => {
-            setIsSubmitting(false);
-        });
+    apiPromise.finally(() => {
+      setIsSubmitting(false);
+    });
 
-        toast.promise(apiPromise, {
-            loading: 'Creating account...',
-            success: (res: any) => res.message || '',
-            error: (err) => err.message || 'Failed to create account',
-        });
+    toast.promise(apiPromise, {
+      loading: 'Creating account...',
+      success: (res: any) => res.message || '',
+      error: (err) => err.message || 'Failed to create account',
+    });
+  };
 
-        
-    };
-
-    
-    const handleDrawerSave = (onClose: () => void) => {
-        handleSubmit((formData) => onSubmit(formData, onClose))();
-    };
+  const handleDrawerSave = (onClose: () => void) => {
+    handleSubmit((formData) => onSubmit(formData, onClose))();
+  };
 
   return (
     <DrawerDirections
       title="Add New Account"
       description="Please fill in the details below. Only Account Name and Type are required."
-      onActionClick={handleDrawerSave} 
-      isSubmitting={isSubmitting} 
+      onActionClick={handleDrawerSave}
+      isSubmitting={isSubmitting}
       actionButtonLabel={isSubmitting ? 'Saving...' : 'Save Account'}
       trigger={
         <Button
@@ -138,7 +145,7 @@ const AccountCreate: React.FC<AccountCreateProps> = ({ onAccountCreated }) => {
         {schemaKeys.map((key) => {
           const errorMsg = errors[key]?.message as string | undefined;
           const isSelect = !!selectOptions[key];
-          const isRequired = key === 'name'|| key === 'type'; 
+          const isRequired = key === 'name' || key === 'type' || key === 'website';
 
           return (
             <div key={key} className="flex flex-col space-y-2">
@@ -151,9 +158,9 @@ const AccountCreate: React.FC<AccountCreateProps> = ({ onAccountCreated }) => {
                 <Select
                   onValueChange={(value) => {
                     if (key === 'type') {
-                        setValue(key, value);
+                      setValue(key, value);
                     } else {
-                        setValue(key, value === 'none' ? undefined : value);
+                      setValue(key, value === 'none' ? undefined : value);
                     }
                   }}
                   defaultValue={undefined}
@@ -165,9 +172,7 @@ const AccountCreate: React.FC<AccountCreateProps> = ({ onAccountCreated }) => {
                     <SelectValue placeholder={`Select ${key}`} />
                   </SelectTrigger>
                   <SelectContent>
-                    {key !== 'type' && (
-                      <SelectItem value="none">None</SelectItem>
-                    )}
+                    {key !== 'type' && <SelectItem value="none">None</SelectItem>}
                     {selectOptions[key]?.map((opt) => (
                       <SelectItem key={opt} value={opt}>
                         {opt}

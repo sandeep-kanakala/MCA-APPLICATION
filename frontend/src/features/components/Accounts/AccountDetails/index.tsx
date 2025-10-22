@@ -1,13 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import {
-  SquarePen,
-  Check,
-  X,
-  Building2,
-  ChevronDown,
-  ChevronRight,
-} from 'lucide-react';
+import { SquarePen, Check, X, Building2, ChevronDown, ChevronRight } from 'lucide-react';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,6 +14,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from '@/components/ui/sonner';
 import { accountSchema } from '../utils';
 import accountService from '@/utils/services/accounts';
 
@@ -29,6 +23,18 @@ type Account = z.infer<typeof accountSchema>;
 const formatFieldName = (field: string): string => {
   return field.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase());
 };
+
+const extractErrorMessage = (error: any): string => {
+  const backendMessage = error.response?.data?.message || error.response?.data?.error;
+  if (backendMessage && typeof backendMessage === 'string' && backendMessage.trim() !== '') {
+    return backendMessage;
+  }
+  if (error.message && typeof error.message === 'string' && error.message.trim() !== '') {
+    return error.message;
+  }
+  return 'An unknown error occurred. Please check the console.';
+};
+
 interface DetailFieldProps {
   label: string;
   value: string | null | undefined;
@@ -124,6 +130,8 @@ const AccountDetailView: React.FC = () => {
   const { accountId } = useParams<{ accountId: string }>();
   const [account, setAccounts] = useState<Account | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const fetchAccount = async () => {
@@ -148,46 +156,60 @@ const AccountDetailView: React.FC = () => {
   const [isAccountInfoOpen, setIsAccountInfoOpen] = useState(true);
 
   const handleEdit = (field: keyof Account) => {
+    if (isSaving || isDeleting || !account) return;
     setEditField(field);
     setTempValue(account?.[field]?.toString() || '');
   };
 
   const handleSave = async () => {
-    if (!editField) return;
+    if (!editField || !account) return;
 
-    const updatedData: Partial<Account> = {
-      [editField]:
-        editField === 'name' || editField === 'phone'
-          ? tempValue === ''
-            ? null
-            : tempValue
-          : tempValue,
+    const fieldToUpdate = editField;
+    let valueToSave: string | null = tempValue;
+    if ((editField === 'name' || editField === 'phone') && tempValue === '') {
+      valueToSave = null;
+    }
+
+    const apiPayload = {
+      [editField]: valueToSave === null ? undefined : valueToSave,
     };
 
-    try {
-      const mergedData = { ...account, ...updatedData };
-      const parsedAccount = accountSchema.parse(mergedData);
-      const normalizedAccount = Object.fromEntries(
-  Object.entries(parsedAccount).map(([k, v]) => [k, v === null ? undefined : v])
-);
+    setError(null);
+    setIsSaving(true);
 
-await accountService.update('' + accountId, normalizedAccount);
+    const mergedData = { ...account, [editField]: valueToSave };
 
-      setAccounts(parsedAccount);
-      setEditField(null);
-      setError(null);
-    } catch (error: any) {
-      if (error instanceof z.ZodError) {
-        setError(
-          'Validation error: ' +
-            error.issues
-              .map((e) => `${formatFieldName(e.path[0] as string)}: ${e.message}`)
-              .join(', '),
-        );
-      } else {
-        setError(error.message || 'Failed to update Account');
-      }
-    }
+    const updatePromise = accountService
+      .update('' + accountId, apiPayload)
+      .then(() => {
+        const parsedAccount = accountSchema.parse(mergedData);
+        setAccounts(parsedAccount);
+        setEditField(null);
+        return { message: `${formatFieldName(fieldToUpdate)} updated successfully.` };
+      })
+      .catch((error: any) => {
+        const errorMessage = extractErrorMessage(error);
+        if (error instanceof z.ZodError) {
+          setError(
+            'Validation error: ' +
+              error.issues
+                .map((e) => `${formatFieldName(e.path[0] as string)}: ${e.message}`)
+                .join(', '),
+          );
+        } else {
+          setError(errorMessage);
+        }
+        throw new Error(errorMessage);
+      })
+      .finally(() => {
+        setIsSaving(false);
+      });
+
+    toast.promise(updatePromise, {
+      loading: `Updating ${formatFieldName(fieldToUpdate)}...`,
+      success: (data: { message: string }) => data.message,
+      error: (err) => err.message,
+    });
   };
 
   const handleCancel = () => {
@@ -197,31 +219,45 @@ await accountService.update('' + accountId, normalizedAccount);
   };
 
   const handleDelete = async () => {
-    try {
-      await accountService.delete('' + accountId);
-      setIsDeleteModalOpen(false);
-      navigate('/apps/sales/accounts');
-    } catch (error: any) {
-      setError(error.message || 'Failed to delete account');
-    }
+    if (!account) return;
+    setIsDeleting(true);
+
+    const deletePromise = accountService
+      .delete('' + accountId)
+      .then(() => {
+        setIsDeleteModalOpen(false);
+        navigate('/apps/sales/accounts');
+        return { message: `${account.name} deleted successfully.` };
+      })
+      .catch((error: any) => {
+        const errorMessage = extractErrorMessage(error);
+        setError(errorMessage);
+        throw new Error(errorMessage);
+      })
+      .finally(() => {
+        setIsDeleting(false);
+      });
+
+    toast.promise(deletePromise, {
+      loading: `Deleting ${account.name}...`,
+      success: (data: { message: string }) => data.message,
+      error: (err) => err.message,
+    });
   };
 
   const editableFields: (keyof Account)[] = Object.keys(accountSchema.shape)
-    .filter((key) => key !== 'name') 
+    .filter((key) => key !== 'name')
     .map((key) => key as keyof Account);
 
   const accountFields = Object.keys(accountSchema.shape).map((key) => {
     const typedKey = key as keyof Account;
     return {
-      label: typedKey
-        .replace(/([A-Z])/g, ' $1') 
-        .replace(/^./, (str) => str.toUpperCase()),
+      label: typedKey.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase()),
       key: typedKey,
       isEditable: editableFields.includes(typedKey),
     };
   });
 
-  
   const midIndex = Math.ceil(accountFields.length / 2);
   const leftColumnFields = accountFields.slice(0, midIndex);
   const rightColumnFields = accountFields.slice(midIndex);
@@ -258,8 +294,9 @@ await accountService.update('' + accountId, normalizedAccount);
                 variant="outline"
                 className="text-sm border-red-500 cursor-pointer hover:text-red-300 text-red-500 hover:bg-red-50"
                 onClick={() => setIsDeleteModalOpen(true)}
+                disabled={isDeleting || isSaving}
               >
-                Delete
+                {isDeleting ? 'Deleting...' : 'Delete'}
               </Button>
             </div>
           </div>
@@ -390,12 +427,13 @@ await accountService.update('' + accountId, normalizedAccount);
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 hover:bg-red-700 text-white"
               onClick={handleDelete}
+              disabled={isDeleting}
             >
-              Delete
+              {isDeleting ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

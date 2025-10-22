@@ -61,7 +61,7 @@ export default function SideBar({ children }: { children?: React.ReactNode }) {
             </div>
           </header>
 
-          <main className="flex flex-1 flex-col gap-4 p-4 pt-0">{children}</main>
+          <main className="flex flex-1 flex-col gap-4  pt-0">{children}</main>
         </SidebarInset>
       </div>
     </SidebarProvider>

@@ -20,7 +20,6 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
@@ -37,7 +36,7 @@ const formatFieldName = (field: string): string => {
   return field.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase());
 };
 
-export default function DataTable() {
+export default function UserTable() {
   const navigate = useNavigate();
   const [data, setData] = useState<User[]>([]);
   const [totalRows, setTotalRows] = useState(0);
@@ -156,10 +155,10 @@ export default function DataTable() {
           phoneNo: u.phoneNo ?? null,
           role: u.role ?? 'USER',
         };
-        
+
         const parsedResult = displaySchema.safeParse(normalized);
         if (!parsedResult.success) {
-            return normalized as User; 
+          return normalized as User;
         }
         return parsedResult.data as User;
       });
@@ -230,10 +229,13 @@ export default function DataTable() {
 
   return (
     <Tabs defaultValue="outline" className="flex flex-col h-full gap-6">
-      <div className="flex items-center justify-between border-b-2 p-3 border-gray-200 px-4 lg:px-6 flex-shrink-0 relative z-10">
-        <Label htmlFor="view-selector" className="sr-only">
-          View
-        </Label>
+      <div className="flex items-center justify-between  p-3  px-4 lg:px-6 flex-shrink-0 relative z-10">
+        {/* Left side: Table title or user info */}
+        <div className="flex items-center gap-2">
+          <h2 className="text-lg font-semibold">Users</h2>
+        </div>
+
+        {/* Right side: search, columns, add user */}
         <div className="flex items-center gap-2">
           <Input
             placeholder="Search all columns..."
@@ -276,6 +278,7 @@ export default function DataTable() {
           <RegisterUser onUserAdded={fetchUsers} />
         </div>
       </div>
+
       <TabsContent
         value="outline"
         className="relative flex flex-col gap-4 flex-1 min-h-0 px-4 lg:px-6"

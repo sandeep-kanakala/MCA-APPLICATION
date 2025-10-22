@@ -41,20 +41,25 @@ const columns: ColumnDef<FormValues>[] = [
   {
     id: 'select',
     header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')
-        }
-        onCheckedChange={(v: any) => table.toggleAllPageRowsSelected(!!v)}
-        aria-label="Select all"
-      />
+      <div className="flex items-center justify-start">
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && 'indeterminate')
+          }
+          onCheckedChange={(v: any) => table.toggleAllPageRowsSelected(!!v)}
+          aria-label="Select all"
+        />
+      </div>
     ),
     cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(v: any) => row.toggleSelected(!!v)}
-        aria-label="Select row"
-      />
+      <div className="flex items-center justify-start" onClick={(e) => e.stopPropagation()}>
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(v: any) => row.toggleSelected(!!v)}
+          aria-label="Select row"
+        />
+      </div>
     ),
     enableSorting: false,
     enableHiding: false,
@@ -125,13 +130,13 @@ export default function AccountsTable() {
   );
   const handlePaginationChange = React.useCallback((updater: any) => setPagination(updater), []);
   const handleRowClick = React.useCallback(
-  (row: any) => {
-    if (row?.id) {
-      navigate(`/apps/sales/accounts/${row.id}`, { state: { account: row } });
-    }
-  },
-  [navigate]
-);
+    (row: any) => {
+      if (row?.id) {
+        navigate(`/apps/sales/accounts/${row.id}`, { state: { account: row } });
+      }
+    },
+    [navigate],
+  );
   const table = useReactTable({
     data,
     columns,
@@ -155,8 +160,14 @@ export default function AccountsTable() {
 
   return (
     <Tabs defaultValue="outline" className="flex flex-col h-full gap-6">
-      <div className="flex items-center justify-between border-b-2 p-3 border-gray-200 px-4 lg:px-6 flex-shrink-0 relative z-10">
-        <div className="flex !justify-end items-center gap-2">
+      <div className="flex items-center justify-between  p-3  px-4 lg:px-6 flex-shrink-0 relative z-10">
+        {/* Left side: Table title */}
+        <div className="flex items-center gap-2">
+          <h2 className="text-lg font-semibold">Accounts</h2>
+        </div>
+
+        {/* Right side: search, columns, add account */}
+        <div className="flex items-center gap-2">
           <Input
             placeholder="Search all columns..."
             value={globalFilter}
@@ -198,6 +209,7 @@ export default function AccountsTable() {
           <AccountCreate onAccountCreated={fetchAccounts} />
         </div>
       </div>
+
       <TabsContent
         value="outline"
         className="relative flex flex-col gap-4 flex-1 min-h-0 px-4 lg:px-6"
@@ -225,14 +237,6 @@ export default function AccountsTable() {
             totalRows={totalRows}
             onRowClick={handleRowClick}
           />
-        </div>
-        <div className="flex items-center justify-between px-4 flex-shrink-0">
-          <div className="flex w-full items-center gap-8 lg:w-fit">
-            <div className="hidden items-center gap-2 lg:flex">
-            </div>
-            <div className="ml-auto flex items-center gap-2 lg:ml-0">
-            </div>
-          </div>
         </div>
       </TabsContent>
     </Tabs>
