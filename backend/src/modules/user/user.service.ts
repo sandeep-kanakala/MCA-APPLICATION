@@ -113,7 +113,6 @@ export class UserService {
         throw new NotFoundException('User not found.');
       }
       const changes = cleanPatchData<User>(userUpdateRequest, existingUser);
-      console.log(changes);
       if (!changes.isChanged) {
         return new ResponseBuilder()
           .withStatusCode(204)
