@@ -8,6 +8,7 @@ import {
   UseGuards,
   Patch,
   Delete,
+  UseInterceptors,
 } from '@nestjs/common';
 import { BundleItemsService } from './bundle-items.service';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
@@ -20,9 +21,10 @@ import {
 } from './dto/bundle-items.dto';
 import type { RequestWithUser } from '~/interface';
 import type { Response } from '@/utils/response.builder';
-import { Http } from 'winston/lib/winston/transports';
+import { LoadEntityInterceptor } from '@/audit/interceptor/load-entity.interceptor';
 
-@Controller('bundle-items')
+@Controller('/bundle-items')
+@UseInterceptors(LoadEntityInterceptor)
 @ApiBearerAuth('access-token')
 @ApiTags('Bundle Items')
 @AuditEntity('BundleItem')

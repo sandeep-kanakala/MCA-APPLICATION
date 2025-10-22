@@ -11,6 +11,7 @@ import {
   Query,
   Get,
   Delete,
+  UseInterceptors,
 } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
@@ -26,9 +27,11 @@ import { AuthGuard } from '@nestjs/passport';
 import type { RequestWithUser } from '~/interface';
 import type { Response } from '@/utils/response.builder';
 import { createProductBundleDto } from './dto/productBundle.dto';
+import { LoadEntityInterceptor } from '@/audit/interceptor/load-entity.interceptor';
 
 @Controller('product')
 @ApiBearerAuth('access-token')
+@UseInterceptors(LoadEntityInterceptor)
 @ApiTags('Products')
 @AuditEntity('Product')
 @UseGuards(AuthGuard('jwt'))

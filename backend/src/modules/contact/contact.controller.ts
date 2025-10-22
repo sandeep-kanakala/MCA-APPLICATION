@@ -11,6 +11,7 @@ import {
   Query,
   Param,
   Delete,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -27,9 +28,11 @@ import type { AuthenticatedRequest, RequestWithUser } from '~/interface';
 import { AuthGuard } from '@nestjs/passport';
 import { Response } from '@/utils/response.builder';
 import { ApiCommonResponses } from '@/common';
+import { LoadEntityInterceptor } from '@/audit/interceptor/load-entity.interceptor';
 
 @ApiTags('Contact')
 @Controller('/contacts')
+@UseInterceptors(LoadEntityInterceptor)
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard('jwt'))
 @AuditEntity('Contact')

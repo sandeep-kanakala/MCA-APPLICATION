@@ -113,6 +113,7 @@ export class UserService {
         throw new NotFoundException('User not found.');
       }
       const changes = cleanPatchData<User>(userUpdateRequest, existingUser);
+      console.log(changes);
       if (!changes.isChanged) {
         return new ResponseBuilder()
           .withStatusCode(204)
@@ -199,11 +200,11 @@ export class UserService {
         this.logger.warn(`User not found or inactive: ${userId}`);
         throw new NotFoundException('User not found or inactive.');
       }
-      const { password: _, ...clenaedUser } = user;
+      const { password: _, ...cleanedUser } = user;
       this.logger.info(`User fetched successfully: ${userId} (${user.email})`);
       return new ResponseBuilder()
         .withMessage('User fetched successfully.')
-        .withData(clenaedUser)
+        .withData(cleanedUser)
         .build();
     } catch (error: unknown) {
       const message =

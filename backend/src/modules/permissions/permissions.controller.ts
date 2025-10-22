@@ -8,6 +8,7 @@ import {
   Patch,
   Post,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { PermissionsService } from './permissions.service';
 import {
@@ -18,16 +19,17 @@ import {
   ApiResponse,
 } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
-import { Role } from '@prisma/client';
 import { ResponseBuilder, type Response } from '@/utils';
 import { Roles } from '@/modules/auth/decorators/roles.decorator';
 import { RolesGuard } from '@/modules/auth/guards/roles.guard';
 import { ApiCommonResponses } from '@/common';
 import { Subject } from '@prisma/client';
 import { ADMIN, SUPER_ADMIN } from '@/config/constants';
+import { LoadEntityInterceptor } from '@/audit/interceptor/load-entity.interceptor';
 
 @ApiTags('Permissions')
-@Controller('permissions')
+@Controller('/permissions')
+@UseInterceptors(LoadEntityInterceptor)
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 @Roles(SUPER_ADMIN, ADMIN)

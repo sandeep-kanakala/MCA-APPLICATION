@@ -11,6 +11,7 @@ import {
   Request,
   UseGuards,
   Query,
+  UseInterceptors,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AccountService } from './account.service';
@@ -26,8 +27,10 @@ import type { Response } from '@/utils/response.builder';
 import type { AuditRequest } from '~/interface';
 import { AuditEntity } from '@/audit/decorators/audit-log.decorator';
 import { ApiCommonResponses } from '@/common';
+import { LoadEntityInterceptor } from '@/audit/interceptor/load-entity.interceptor';
 
-@Controller('accounts')
+@Controller('/accounts')
+@UseInterceptors(LoadEntityInterceptor)
 @ApiBearerAuth('access-token')
 @ApiTags('Accounts')
 @AuditEntity('Account')
