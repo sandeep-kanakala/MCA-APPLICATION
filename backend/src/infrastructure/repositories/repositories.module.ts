@@ -4,6 +4,8 @@ import { UserRepository } from './user.repository';
 import { TenantRepository } from './tenant.repository';
 import { AccountRepository } from './account.repository';
 import { ContactRepository } from './contact.repository';
+import { productRepository } from './product.repository';
+import { BundleItemRepository } from './bundle-items.repository';
 
 @Global()
 @Module({
@@ -13,12 +15,16 @@ import { ContactRepository } from './contact.repository';
     TenantRepository,
     AccountRepository,
     ContactRepository,
+    productRepository,
+    BundleItemRepository,
   ],
   exports: [
     UserRepository,
     TenantRepository,
     AccountRepository,
     ContactRepository,
+    productRepository,
+    BundleItemRepository,
   ],
 })
 export class RepositoriesModule {}

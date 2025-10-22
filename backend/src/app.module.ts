@@ -10,6 +10,8 @@ import { RepositoriesModule } from './infrastructure/repositories/repositories.m
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
 import { ContactModule } from '@/modules/contact/contact.module';
+import { ProductModule } from './modules/product/product.module';
+import { BundleItemsModule } from './modules/bundle-items/bundle-items.module';
 
 @Module({
   imports: [
@@ -25,6 +27,8 @@ import { ContactModule } from '@/modules/contact/contact.module';
     PermissionsModule,
     RepositoriesModule,
     ContactModule,
+    ProductModule,
+    BundleItemsModule,
   ],
 })
 export class AppModule {}

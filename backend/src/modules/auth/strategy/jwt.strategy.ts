@@ -24,7 +24,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: { userId: string; email: string; tenantId: string; type: string; }) {
+  async validate(payload: {
+    userId: string;
+    email: string;
+    tenantId: string;
+    type: string;
+  }) {
     const user = await this.authService.validateTokenPayload(payload.userId);
     if (!user) {
       throw new UnauthorizedException('User not found or token invalid');

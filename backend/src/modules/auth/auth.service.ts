@@ -124,7 +124,7 @@ export class AuthService {
       throw new NotFoundException('User with this email does not exist');
     }
     //const otp=123456
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();  
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
     await this.prisma.user.update({ where: { id: user.id }, data: { otp } });
 

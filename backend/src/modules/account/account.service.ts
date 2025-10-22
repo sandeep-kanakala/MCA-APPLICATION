@@ -22,10 +22,7 @@ import {
 export class AccountService {
   private readonly logger = new Logger(AccountService.name);
 
-  constructor(
-    private readonly accountRepository: AccountRepository,
-    private readonly jwtService: JwtService,
-  ) {}
+  constructor(private readonly accountRepository: AccountRepository) {}
 
   async createAccount(
     dto: CreateAccountDto,

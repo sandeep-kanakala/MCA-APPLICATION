@@ -595,9 +595,12 @@ model PriceBook {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
 
   tenant  Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   entries PriceBookEntry[]
+  
 
   @@unique([tenantId, name])
   @@index([tenantId])
@@ -617,6 +620,10 @@ model PriceBookEntry {
   quoteLineItems   QuoteLineItem[]
   orderItems       OrderItem[]
   priceListEntries PriceListEntry[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
 
   @@unique([tenantId, priceBookId, productId])
   @@index([tenantId])
@@ -639,6 +646,11 @@ model ProductBundle {
   items          ProductBundleItem[]
   quoteLineItems QuoteLineItem[]
 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
+
   @@unique([tenantId, parentProductId, name])
   @@index([tenantId])
 }
@@ -657,13 +669,17 @@ model ProductBundleItem {
   bundle  ProductBundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
   product Product       @relation("BundleItemProduct", fields: [productId], references: [id])
   tenant  Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
 
   @@unique([bundleId, productId])
   @@index([tenantId])
 }
 
 // NEW: Price Lists (customer/region/contract specific) integrated with PriceBook and Products
-model PriceList {
+model PriceList{
   id           String  @id @default(cuid())
   tenantId     String
   name         String
@@ -674,6 +690,10 @@ model PriceList {
   tenant  Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   account Account?         @relation(fields: [accountId], references: [id])
   entries PriceListEntry[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
 
   @@unique([tenantId, name])
   @@index([tenantId])
@@ -696,6 +716,10 @@ model PriceListEntry {
   priceBookEntry PriceBookEntry? @relation(fields: [priceBookEntryId], references: [id])
   product        Product         @relation(fields: [productId], references: [id])
   tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
 
   @@unique([tenantId, priceListId, productId, effectiveFrom])
   @@index([tenantId])
@@ -765,9 +789,11 @@ model QuoteLineItem {
   quote          Quote          @relation(fields: [quoteId], references: [id], onDelete: Cascade)
   priceBookEntry PriceBookEntry @relation(fields: [priceBookEntryId], references: [id])
   bundle         ProductBundle? @relation(fields: [bundleId], references: [id])
-
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
   @@index([quoteId])
 }
+
 
 model Order {
   id            String      @id @default(cuid())
@@ -823,6 +849,8 @@ model OrderAmendment {
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   order  Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
 
   @@index([tenantId])
 }
@@ -848,6 +876,8 @@ model OrderItem {
   priceBookEntry PriceBookEntry @relation(fields: [priceBookEntryId], references: [id])
   subscription   Subscription?  @relation(fields: [subscriptionId], references: [id])
   asset          Asset?         @relation(fields: [assetId], references: [id])
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
 
   @@index([orderId])
   @@index([subscriptionId])
@@ -876,6 +906,8 @@ model Campaign {
   opportunities  Opportunity[]
   contactMembers CampaignContactMember[]
   leadMembers    CampaignLeadMember[]
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
 
   @@unique([tenantId, name])
   @@index([tenantId])
@@ -889,6 +921,8 @@ model CampaignContactMember {
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   contact  Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
 
   @@unique([campaignId, contactId])
 }
@@ -901,6 +935,8 @@ model CampaignLeadMember {
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   lead     Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
 
   @@unique([campaignId, leadId])
 }
@@ -922,6 +958,8 @@ model Subscription {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
 
   tenant     Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   account    Account            @relation(fields: [accountId], references: [id])
@@ -946,6 +984,8 @@ model SubscriptionItem {
 
   subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
   product      Product      @relation(fields: [productId], references: [id])
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
 
   @@index([subscriptionId])
   @@index([productId])
@@ -967,6 +1007,8 @@ model Asset {
   product      Product       @relation(fields: [productId], references: [id])
   subscription Subscription? @relation(fields: [subscriptionId], references: [id])
   orderItems   OrderItem[]
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
 
   @@index([tenantId])
   @@index([accountId])
@@ -995,7 +1037,8 @@ model Task {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   completedAt DateTime?
-  deletedAt   DateTime?
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
 
   tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdBy   User         @relation("TaskCreator", fields: [createdById], references: [id])
@@ -1056,6 +1099,8 @@ model EventParticipant {
 
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
 
   @@id([eventId, userId])
 }
@@ -1080,7 +1125,9 @@ model Note {
   createdById String
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
+ 
 
   tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdBy User   @relation("NoteCreatedBy", fields: [createdById], references: [id])
@@ -1117,7 +1164,8 @@ model Attachment {
 
   uploadedById String
   createdAt    DateTime  @default(now())
-  deletedAt    DateTime?
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
 
   tenant     Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   uploadedBy User   @relation("AttachmentUploadedBy", fields: [uploadedById], references: [id])
