@@ -8,14 +8,13 @@ import {
 } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import * as winston from 'winston';
-import { Prisma } from '@prisma/client';
+import { Contact, Prisma } from '@prisma/client';
 
 import { ContactCreateRequestDto, ContactUpdateRequestDto } from './dto';
-import { Response, ResponseBuilder } from '@/utils/response.builder';
+import { Response, ResponseBuilder, cleanPatchData } from '@/utils';
 import { AuthenticatedRequest, RequestWithUser } from '~/interface';
 import { ContactRepository } from '@/infrastructure/repositories/contact.repository';
 import { AccountRepository } from '@/infrastructure/repositories/account.repository';
-
 @Injectable()
 export class ContactService {
   constructor(
@@ -174,7 +173,7 @@ export class ContactService {
   async updateContact(
     id: string,
     contactUpdateDto: ContactUpdateRequestDto,
-    request: RequestWithUser,
+    request: AuthenticatedRequest,
   ): Promise<Response> {
     const { user } = request;
     this.logger.info(`Updating contact ID: ${id} by user: ${user.email}`);
@@ -184,14 +183,23 @@ export class ContactService {
       }
 
       const existingContact = await this.contactRepository.findById(id);
-
       if (!existingContact) {
         this.logger.warn(`Contact not found or already deleted: ${id}`);
         throw new NotFoundException('Contact not found.');
       }
-
+      const changes = cleanPatchData<Contact>(
+        contactUpdateDto,
+        existingContact,
+      );
+      if (!changes) {
+        return new ResponseBuilder()
+          .withStatusCode(204)
+          .withMessage('no changes found')
+          .withData(contactUpdateDto)
+          .build();
+      }
       const updatedContact = await this.contactRepository.updateContact(id, {
-        ...contactUpdateDto,
+        ...changes,
         updatedBy: { connect: { id: user.id } },
       });
 
@@ -231,6 +239,10 @@ export class ContactService {
       this.logger.error(`Error deleting contact ID: ${id}`, { error });
       this.handleError(error, 'Error deleting contact.');
     }
+  }
+
+  async findOne(id: string) {
+    return await this.contactRepository.findById(id);
   }
 
   private handleError(error: unknown, message: string): never {

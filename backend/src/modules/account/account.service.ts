@@ -10,18 +10,18 @@ import { AccountRepository } from '@/infrastructure/repositories/account.reposit
 import { CreateAccountDto, UpdateAccountDto } from './dto/account.dto';
 import { ResponseBuilder } from '@/utils/response.builder';
 import type { Response } from '@/utils/response.builder';
-import { JwtService } from '@nestjs/jwt';
 import { AuditRequest } from '~/interface';
 import {
   toAccountResponseDto,
   toPrismaCreateAccountData,
   toPrismaUpdateAccountData,
 } from '@/utils/mapper/account.mapper';
+import { Account } from '@prisma/client';
+import { cleanPatchData } from '@/utils';
 
 @Injectable()
 export class AccountService {
   private readonly logger = new Logger(AccountService.name);
-
   constructor(private readonly accountRepository: AccountRepository) {}
 
   async createAccount(
@@ -118,9 +118,6 @@ export class AccountService {
       if (!existingAccount) {
         throw new NotFoundException('Account not found');
       }
-
-      request.beforeUpdate = existingAccount;
-
       if (dto.name && dto.name !== existingAccount.name) {
         const nameConflict = await this.accountRepository.findByName(
           dto.name,
@@ -131,10 +128,18 @@ export class AccountService {
           throw new ConflictException('Account with this name already exists');
         }
       }
+      const changes = cleanPatchData<Account>(dto, existingAccount);
+      if (!changes.isChanged) {
+        return new ResponseBuilder()
+          .withStatusCode(204)
+          .withMessage('no changes found')
+          .withData(dto)
+          .build();
+      }
 
       const updatedAccount = await this.accountRepository.updateAccount(
         id,
-        toPrismaUpdateAccountData(dto, user.id),
+        toPrismaUpdateAccountData(changes.cleaned, user.id),
       );
 
       return new ResponseBuilder()
@@ -158,8 +163,6 @@ export class AccountService {
       if (!existingAccount) {
         throw new NotFoundException('Account not found');
       }
-
-      request.beforeDelete = existingAccount;
       await this.accountRepository.archiveAccount(id, user.id);
 
       return new ResponseBuilder()
@@ -212,5 +215,9 @@ export class AccountService {
     throw new InternalServerErrorException(
       `An unexpected error occurred while ${context}`,
     );
+  }
+
+  async findOne(id: string) {
+    return await this.accountRepository.findById(id);
   }
 }

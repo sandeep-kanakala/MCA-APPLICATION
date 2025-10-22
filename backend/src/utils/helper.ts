@@ -1,6 +1,8 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
+import { IUserTokenPayload } from '~/interface';
+import { User } from '@prisma/client';
 
 export const AccessToken = createParamDecorator(
   (data: unknown, ctx: ExecutionContext): string | undefined => {
@@ -29,4 +31,10 @@ export class passwordEncoder {
   ): Promise<boolean> {
     return bcrypt.compare(plainPassword, hashedPassword);
   }
+}
+
+export function isIUserTokenPayload(
+  user: IUserTokenPayload | User,
+): user is IUserTokenPayload {
+  return (user as IUserTokenPayload).id !== undefined;
 }

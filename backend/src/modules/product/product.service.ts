@@ -59,7 +59,11 @@ export class ProductService {
 
       const product = await this.productRepository.createProduct({
         ...dto,
-        tenantId: user.tenantId,
+        tenant: {
+          connect: {
+            id: user.tenantId,
+          },
+        },
       });
       this.logger.info(
         `Product created successfully: ${product.id} by ${user.email}`,
@@ -68,8 +72,16 @@ export class ProductService {
       let bundleData = {};
       if (dto.isBundle) {
         const bundle = await this.productRepository.createProductBundle({
-          tenantId: user.tenantId,
-          parentProductId: product.id,
+          parent: {
+            connect: {
+              id: product.id,
+            },
+          },
+          tenant: {
+            connect: {
+              id: user.tenantId,
+            },
+          },
           name: dto.name,
           description: dto.description,
         });
@@ -126,8 +138,16 @@ export class ProductService {
       this.logger.info(`Product marked as bundle: ${id} by ${user.email}`);
 
       const productBundle = await this.productRepository.createProductBundle({
-        tenantId: user.tenantId,
-        parentProductId: id,
+        tenant: {
+          connect: {
+            id: user.tenantId,
+          },
+        },
+        parent: {
+          connect: {
+            id: id,
+          },
+        },
         name: dto.name,
         description: dto.description,
       });
@@ -323,9 +343,17 @@ export class ProductService {
 
       if (!isCurrentlyBundle && isUpdatedToBundle) {
         await this.productRepository.createProductBundle({
-          tenantId: user.tenantId,
-          parentProductId: id,
-          name: dto.name,
+          tenant: {
+            connect: {
+              id: user.tenantId,
+            },
+          },
+          parent: {
+            connect: {
+              id: id,
+            },
+          },
+          name: dto.name!,
           description: dto.description,
         });
         this.logger.info(

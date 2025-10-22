@@ -32,7 +32,7 @@ export const toPrismaCreateAccountData = (
 
 // request to prisma update
 export const toPrismaUpdateAccountData = (
-  dto: UpdateAccountDto,
+  dto: Partial<UpdateAccountDto>,
   userId: string,
 ): Prisma.AccountUpdateInput => ({
   ...dto,

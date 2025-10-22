@@ -7,22 +7,23 @@ import {
   Inject,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
-import { JwtService } from '@nestjs/jwt';
 import { UserRegisterRequestDto, UserUpdateRequestDto } from './dto';
 import { ResponseBuilder } from '@/utils/response.builder';
-import { UserStatus } from '@prisma/client';
+import { User, UserStatus } from '@prisma/client';
 import type { Response } from '@/utils/response.builder';
 import type { RequestWithUser } from '~/interface';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import * as winston from 'winston';
 import { hashEmail, passwordEncoder } from '@/utils/helper';
+import { UserRepository } from '@/infrastructure/repositories/user.repository';
+import { cleanPatchData } from '@/utils';
 
 @Injectable()
 export class UserService {
   constructor(
     private readonly prismaService: PrismaService,
-    private readonly jwtService: JwtService,
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: winston.Logger,
+    private readonly userRepository: UserRepository,
   ) {}
 
   async create(
@@ -53,29 +54,26 @@ export class UserService {
         userRegisterRequest.password,
       );
 
-      const newUser = await this.prismaService.user.create({
-        data: {
-          id,
-          firstName: userRegisterRequest.firstName.trim(),
-          middleName: userRegisterRequest.middleName?.trim() || null,
-          lastName: userRegisterRequest.lastName.trim(),
-          phoneNo: userRegisterRequest.phoneNo?.trim(),
-          email: userRegisterRequest.email.toLowerCase().trim(),
-          password,
-          createdBy: user.email,
-          tenant: { connect: { id: tenantId } },
-          roles: {
-            connect: [
-              {
-                tenantId_name: {
-                  tenantId: tenantId,
-                  name: userRegisterRequest.role,
-                },
+      const { password: _, ...newUser } = await this.userRepository.createUser({
+        id,
+        firstName: userRegisterRequest.firstName.trim(),
+        middleName: userRegisterRequest.middleName?.trim() || null,
+        lastName: userRegisterRequest.lastName.trim(),
+        phoneNo: userRegisterRequest.phoneNo?.trim(),
+        email: userRegisterRequest.email.toLowerCase().trim(),
+        password,
+        createdBy: user.email,
+        tenant: { connect: { id: tenantId } },
+        roles: {
+          connect: [
+            {
+              tenantId_name: {
+                tenantId: tenantId,
+                name: userRegisterRequest.role,
               },
-            ],
-          },
+            },
+          ],
         },
-        select: { id: true, email: true, tenantId: true, createdAt: true },
       });
 
       this.logger.info(
@@ -114,24 +112,24 @@ export class UserService {
         this.logger.warn(`user not found: ${id}`);
         throw new NotFoundException('User not found.');
       }
+      const changes = cleanPatchData<User>(userUpdateRequest, existingUser);
+      if (!changes.isChanged) {
+        return new ResponseBuilder()
+          .withStatusCode(204)
+          .withMessage('no changes found')
+          .withData(userUpdateRequest)
+          .build();
+      }
 
-      const updatedUser = await this.prismaService.user.update({
-        where: { id },
-        data: {
-          ...userUpdateRequest,
-          updatedBy: user.email,
-          updatedAt: new Date(),
-        },
-        select: {
-          id: true,
-          email: true,
-          firstName: true,
-          lastName: true,
-          phoneNo: true,
-          roles: true,
-          updatedAt: true,
-        },
-      });
+      const { password: _, ...updatedUser } =
+        await this.prismaService.user.update({
+          where: { id },
+          data: {
+            ...changes.cleaned,
+            updatedBy: user.email,
+            updatedAt: new Date(),
+          },
+        });
 
       this.logger.info(
         `User updated successfully: ${id} (${updatedUser.email})`,
@@ -163,21 +161,12 @@ export class UserService {
         }),
         this.prismaService.user.findMany({
           where: { status: UserStatus.ACTIVE },
-          select: {
-            id: true,
-            firstName: true,
-            middleName: true,
-            lastName: true,
-            email: true,
-            phoneNo: true,
-            roles: true,
-          },
           skip,
           take: pageSize,
           orderBy: { createdAt: 'desc' },
         }),
       ]);
-
+      users.map(({ password, ...user }) => user);
       return new ResponseBuilder()
         .withMessage('Users fetched successfully.')
         .withData({
@@ -204,28 +193,17 @@ export class UserService {
         throw new BadRequestException('Invalid user ID.');
       }
 
-      const user = await this.prismaService.user.findUnique({
-        where: { id: userId },
-        select: {
-          id: true,
-          firstName: true,
-          middleName: true,
-          lastName: true,
-          email: true,
-          phoneNo: true,
-          roles: true,
-          status: true,
-        },
-      });
+      const user = await this.userRepository.findActiveUserById(userId);
 
       if (!user || user.status !== UserStatus.ACTIVE) {
         this.logger.warn(`User not found or inactive: ${userId}`);
         throw new NotFoundException('User not found or inactive.');
       }
+      const { password: _, ...clenaedUser } = user;
       this.logger.info(`User fetched successfully: ${userId} (${user.email})`);
       return new ResponseBuilder()
         .withMessage('User fetched successfully.')
-        .withData(user)
+        .withData(clenaedUser)
         .build();
     } catch (error: unknown) {
       const message =
@@ -271,6 +249,14 @@ export class UserService {
         error: message,
       });
       this.handleError(error, 'Error deleting user');
+    }
+  }
+
+  async findOne(id: string) {
+    const user = await this.userRepository.findActiveUserById(id);
+    if (user) {
+      const { password: _, ...safeUser } = user;
+      return safeUser;
     }
   }
 

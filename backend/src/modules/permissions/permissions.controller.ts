@@ -18,30 +18,20 @@ import {
   ApiResponse,
 } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
-import { ResponseBuilder, type Response } from '@/utils/response.builder';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { Role } from '@prisma/client';
+import { ResponseBuilder, type Response } from '@/utils';
+import { Roles } from '@/modules/auth/decorators/roles.decorator';
+import { RolesGuard } from '@/modules/auth/guards/roles.guard';
+import { ApiCommonResponses } from '@/common';
 import { Subject } from '@prisma/client';
+import { ADMIN, SUPER_ADMIN } from '@/config/constants';
 
 @ApiTags('Permissions')
 @Controller('permissions')
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
-@ApiResponse({
-  status: 400,
-  description: 'The request is malformed or invalid.',
-})
-@ApiResponse({ status: 401, description: 'Unauthorized.' })
-@ApiResponse({
-  status: 403,
-  description:
-    'The user does not have the necessary privileges to perform the operation.',
-})
-@ApiResponse({ status: 500, description: 'An internal server error occurred.' })
-@ApiResponse({ status: 503, description: 'A service is unreachable.' })
-@ApiResponse({ status: 504, description: 'Gateway Timeout Error.' })
-@ApiResponse({ status: 200, description: 'OK' })
-@ApiResponse({ status: 202, description: 'Accepted' })
+@Roles(SUPER_ADMIN, ADMIN)
+@ApiCommonResponses()
 export class PermissionsController {
   constructor(private readonly permissionsService: PermissionsService) {}
 

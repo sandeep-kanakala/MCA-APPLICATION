@@ -1,5 +1,6 @@
 import { Request } from 'express';
 import { IUserTokenPayload } from './userToken.interface'; // adjust path if needed
+import { User } from '@prisma/client';
 
 export interface AuditRequest extends Request {
   entityId?: string;
@@ -7,5 +8,9 @@ export interface AuditRequest extends Request {
   beforeUpdate?: any;
   afterUpdate?: any;
   beforeDelete?: any;
-  user: IUserTokenPayload;
+  user: IUserTokenPayload | User;
+}
+
+export interface FindOneCapable {
+  findOne(id: any): Promise<any>;
 }

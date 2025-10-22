@@ -69,11 +69,25 @@ export class BundleItemsService {
         );
         throw new ConflictException('Product already exists in the bundle');
       }
+      const { productId, ...modifiedDto } = dto;
 
       const bundleItem = await this.bundleItemRepository.createBundleItem({
-        ...dto,
-        bundleId,
-        tenantId: user.tenantId,
+        ...modifiedDto,
+        bundle: {
+          connect: {
+            id: bundleId,
+          },
+        },
+        tenant: {
+          connect: {
+            id: user.tenantId,
+          },
+        },
+        product: {
+          connect: {
+            id: productId,
+          },
+        },
       });
 
       this.logger.info(

@@ -11,7 +11,7 @@ import {
   UseGuards,
   Query,
   Request,
-  ForbiddenException,
+  UseInterceptors,
 } from '@nestjs/common';
 import { UserRegisterRequestDto, UserUpdateRequestDto } from './dto';
 import { ResponseBuilder, type Response } from '@/utils/response.builder';
@@ -21,44 +21,31 @@ import {
   ApiOperation,
   ApiBody,
   ApiQuery,
-  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { AuditEntity } from '@/audit/decorators/audit-log.decorator';
 import type { AuthenticatedRequest, RequestWithUser } from '~/interface';
-import { Permissions } from '../permissions/permissions.decorator';
-import { PermissionsGuard } from '../permissions/permissions.guard';
+import { Permissions } from '@/modules/permissions/permissions.decorator';
+import { PermissionsGuard } from '@/modules/permissions/permissions.guard';
+import { LoadEntityInterceptor } from '@/audit/interceptor/load-entity.interceptor';
+import { ApiCommonResponses } from '@/common/api.responses';
 
 @ApiTags('User')
-@Controller('user')
+@UseInterceptors(LoadEntityInterceptor)
+@Controller('/users')
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
 @AuditEntity('User')
-@ApiResponse({
-  status: 400,
-  description: 'The request is malformed or invalid.',
-})
-@ApiResponse({ status: 401, description: 'Unauthorized.' })
-@ApiResponse({
-  status: 403,
-  description:
-    'The user does not have the necessary privileges to perform the operation.',
-})
-@ApiResponse({ status: 500, description: 'An internal server error occurred.' })
-@ApiResponse({ status: 503, description: 'A service is unreachable.' })
-@ApiResponse({ status: 504, description: 'Gateway Timeout Error.' })
-@ApiResponse({ status: 200, description: 'OK' })
-@ApiResponse({ status: 202, description: 'Accepted' })
+@ApiCommonResponses()
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @HttpCode(HttpStatus.OK)
   @Get('/role')
-  @ApiOperation({ summary: 'Get User Role', description: 'Retrieve user role' })
-  @ApiResponse({
-    status: 200,
-    description: 'User role retrieved successfully.',
+  @ApiOperation({
+    summary: 'Get User ',
+    description: 'Retrieve logged in user ',
   })
   getRole(@Request() req: AuthenticatedRequest): Response {
     if (!req.user) {
@@ -66,15 +53,11 @@ export class UserController {
         .withMessage('User not authenticated')
         .build();
     }
-
-    const { password, ...safeUser } = req.user;
-
     return new ResponseBuilder()
       .withMessage('Success')
-      .withData(safeUser)
+      .withData(req.user)
       .build();
   }
-
   @HttpCode(HttpStatus.CREATED)
   @Post('/create')
   @Permissions('can_create_user')
@@ -82,8 +65,23 @@ export class UserController {
     summary: 'User Registration',
     description: 'Register a new user',
   })
-  @ApiResponse({ status: 201, description: 'User created successfully.' })
-  @ApiBody({ type: UserRegisterRequestDto })
+  @ApiBody({
+    type: UserRegisterRequestDto,
+    examples: {
+      example: {
+        summary: 'User-I',
+        value: {
+          firstName: 'John',
+          middleName: 'AAA',
+          lastName: 'Doe',
+          phoneNo: '1234567890',
+          email: 'john@gmail.com',
+          password: 'John@1234',
+          role: 'USER',
+        },
+      },
+    },
+  })
   async register(
     @Body() userRegisterRequest: UserRegisterRequestDto,
     @Request() request: RequestWithUser,
@@ -98,7 +96,6 @@ export class UserController {
     summary: 'Get All Users',
     description: 'Retrieve a list of all users',
   })
-  @ApiResponse({ status: 200, description: 'Users retrieved successfully.' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
   async getList(
@@ -115,8 +112,6 @@ export class UserController {
     summary: 'Get User by ID',
     description: 'Retrieve user details by user ID',
   })
-  @ApiResponse({ status: 200, description: 'User retrieved successfully.' })
-  @ApiResponse({ status: 404, description: 'User not found.' })
   async getUser(@Param('userId') userId: string): Promise<Response> {
     return this.userService.getUserById(userId);
   }
@@ -129,8 +124,6 @@ export class UserController {
     summary: 'Update User',
     description: 'Update user details by user ID',
   })
-  @ApiResponse({ status: 200, description: 'User updated successfully.' })
-  @ApiResponse({ status: 404, description: 'User not found.' })
   @ApiBody({ type: UserUpdateRequestDto })
   async update(
     @Param('id') id: string,
@@ -147,8 +140,6 @@ export class UserController {
     summary: 'Delete User',
     description: 'Delete user by user ID',
   })
-  @ApiResponse({ status: 200, description: 'User deleted successfully.' })
-  @ApiResponse({ status: 404, description: 'User not found.' })
   async delete(
     @Param('id') id: string,
     @Request() request: RequestWithUser,

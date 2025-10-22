@@ -26,27 +26,14 @@ import { AuditEntity } from '@/audit/decorators/audit-log.decorator';
 import type { AuthenticatedRequest, RequestWithUser } from '~/interface';
 import { AuthGuard } from '@nestjs/passport';
 import { Response } from '@/utils/response.builder';
+import { ApiCommonResponses } from '@/common';
 
 @ApiTags('Contact')
-@Controller('/contact')
+@Controller('/contacts')
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard('jwt'))
 @AuditEntity('Contact')
-@ApiResponse({
-  status: 400,
-  description: 'The request is malformed or invalid.',
-})
-@ApiResponse({ status: 401, description: 'Unauthorized.' })
-@ApiResponse({
-  status: 403,
-  description:
-    'The user does not have the necessary privileges to perform the operation.',
-})
-@ApiResponse({ status: 500, description: 'An internal server error occurred.' })
-@ApiResponse({ status: 503, description: 'A service is unreachable.' })
-@ApiResponse({ status: 504, description: 'Gateway Timeout Error.' })
-@ApiResponse({ status: 200, description: 'OK' })
-@ApiResponse({ status: 202, description: 'Accepted' })
+@ApiCommonResponses()
 export class ContactController {
   constructor(private readonly contactService: ContactService) {}
 
@@ -123,7 +110,7 @@ export class ContactController {
   @ApiBody({ type: ContactUpdateRequestDto })
   async updateContact(
     @Param('id') id: string,
-    @Request() request: RequestWithUser,
+    @Request() request: AuthenticatedRequest,
     @Body() contactUpdateRequestDto: ContactUpdateRequestDto,
   ): Promise<Response> {
     return this.contactService.updateContact(

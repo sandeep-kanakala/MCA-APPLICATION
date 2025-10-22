@@ -3,10 +3,37 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { AuditRequest } from '~/interface';
 import { ResponseBuilder } from '@/utils/response.builder';
 import type { Response } from '@/utils/response.builder';
+import { isIUserTokenPayload } from '@/utils/helper';
 
 @Injectable()
 export class AuditLogService {
   constructor(private prisma: PrismaService) {}
+
+  private checkUserType(req?: AuditRequest) {
+    const user = req?.user;
+
+    if (user) {
+      if (isIUserTokenPayload(user)) {
+        return {
+          userId: user.id || 'system',
+          tenantId: user.tenantId || 'default',
+          email: user.email || 'unknown',
+        };
+      } else {
+        return {
+          userId: user.id || 'system',
+          tenantId: user.tenantId || 'default',
+          email: user.email || 'unknown',
+        };
+      }
+    }
+
+    return {
+      userId: 'system',
+      tenantId: 'default',
+      email: 'unknown',
+    };
+  }
 
   async log({
     entity,
@@ -25,12 +52,7 @@ export class AuditLogService {
     req?: AuditRequest;
     response?: any;
   }) {
-    const performedBy = {
-      userId: req?.user?.id || 'system',
-      tenantId: req?.user?.tenantId || 'default',
-      email: req?.user?.email || 'unknown',
-    };
-
+    const performedBy = this.checkUserType(req);
     const meta = {
       ipAddress: req?.ip,
       userAgent: req?.headers?.['user-agent'],

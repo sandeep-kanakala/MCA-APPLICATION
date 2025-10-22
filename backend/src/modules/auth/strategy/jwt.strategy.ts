@@ -37,6 +37,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (payload.type !== 'LOGIN') {
       throw new UnauthorizedException('Token not valid for this API');
     }
-    return user;
+    const { password: _, ...safeUser } = user;
+    return safeUser;
   }
 }

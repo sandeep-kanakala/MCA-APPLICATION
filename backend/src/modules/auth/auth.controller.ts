@@ -13,71 +13,35 @@ import {
   ForgotPasswordDto,
   ValidateOtpDto,
 } from './dto';
-import {
-  ApiOperation,
-  ApiBody,
-  ApiBearerAuth,
-  ApiTags,
-  ApiResponse,
-} from '@nestjs/swagger';
+import { ApiOperation, ApiBody, ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { SkipAudit } from '@/audit/decorators/skip-audit-log.decorator';
 import { AuthGuard } from '@nestjs/passport';
+import { ApiCommonResponses } from '@/common';
 
 @ApiTags('Auth')
 @Controller('auth')
-@ApiResponse({
-  status: 400,
-  description: 'The request is malformed or invalid.',
-})
-@ApiResponse({
-  status: 403,
-  description:
-    'The user does not have the necessary privileges to perform the operation.',
-})
-@ApiResponse({
-  status: 500,
-  description: 'An internal server error occurred.',
-})
-@ApiResponse({
-  status: 503,
-  description: 'A service is unreachable.',
-})
-@ApiResponse({
-  status: 504,
-  description: 'Gateway Timeout Error.',
-})
-@ApiResponse({
-  status: 200,
-  description: 'OK',
-})
-@ApiResponse({
-  status: 202,
-  description: 'Accepted',
-})
+@ApiCommonResponses()
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.CREATED)
   @Post('signin')
   @ApiOperation({
     summary: 'User Sign In',
     description: 'Authenticate user and return access token',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'User signed in successfully.',
-  })
   @SkipAudit()
   @ApiBody({
     type: LoginDto,
-  })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Login successful',
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: 'Invalid credentials',
+    examples: {
+      example: {
+        summary: 'User-I',
+        value: {
+          email: 'admin@linkfields.com',
+          password: 'Passw0rd!',
+        },
+      },
+    },
   })
   signin(@Body() dto: LoginDto) {
     return this.authService.signin(dto);
@@ -88,10 +52,6 @@ export class AuthController {
   @ApiOperation({
     summary: 'Forgot Password',
     description: 'Send OTP to user email',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'OTP sent successfully.',
   })
   @SkipAudit()
   @ApiBody({
@@ -107,13 +67,18 @@ export class AuthController {
     summary: 'Validate OTP',
     description: 'Verify OTP and return reset token',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'OTP validated successfully.',
-  })
   @SkipAudit()
   @ApiBody({
     type: ValidateOtpDto,
+    examples: {
+      example: {
+        summary: 'sample',
+        value: {
+          email: 'admin@linkfields.com',
+          otp: '123456',
+        },
+      },
+    },
   })
   validateOtp(@Body() dto: ValidateOtpDto) {
     return this.authService.validateOtp(dto);
@@ -125,19 +90,20 @@ export class AuthController {
     summary: 'Change Password',
     description: 'Change user password',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Password changed successfully.',
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'Unauthorized.',
-  })
   @SkipAudit()
   @UseGuards(AuthGuard('reset-change-password'))
   @ApiBearerAuth('access-token')
   @ApiBody({
     type: ChangePasswordDto,
+    examples: {
+      example: {
+        summary: 'sample',
+        value: {
+          email: 'user@example.com',
+          password: 'Passw0rd@',
+        },
+      },
+    },
   })
   changePassword(@Body() dto: ChangePasswordDto) {
     return this.authService.changePassword(dto);
