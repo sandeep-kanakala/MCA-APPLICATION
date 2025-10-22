@@ -58,7 +58,6 @@ export class AuditInterceptor<T> implements NestInterceptor {
       case 'POST':
         action = 'CREATE';
         after = responseData;
-        console.log(responseData);
         break;
       case 'PATCH':
       case 'PUT':

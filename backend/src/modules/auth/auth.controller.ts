@@ -25,7 +25,7 @@ export class AuthController {
   constructor(private authService: AuthService) {}
 
   @HttpCode(HttpStatus.CREATED)
-  @Post('signin')
+  @Post('/signin')
   @ApiOperation({
     summary: 'User Sign In',
     description: 'Authenticate user and return access token',

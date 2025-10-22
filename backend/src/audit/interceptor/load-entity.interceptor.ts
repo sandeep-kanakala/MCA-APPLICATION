@@ -4,6 +4,7 @@ import {
   ExecutionContext,
   CallHandler,
   Type,
+  Inject,
 } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import { Observable } from 'rxjs';
@@ -11,6 +12,8 @@ import { AuditRequest, FindOneCapable } from '~/interface';
 import { UserService } from '@/modules/user/user.service';
 import { ContactService } from '@/modules/contact/contact.service';
 import { AccountService } from '@/modules/account/account.service';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import winston from 'winston';
 
 const serviceMap: Record<string, Type<FindOneCapable>> = {
   users: UserService,
@@ -20,7 +23,10 @@ const serviceMap: Record<string, Type<FindOneCapable>> = {
 
 @Injectable()
 export class LoadEntityInterceptor implements NestInterceptor {
-  constructor(private moduleRef: ModuleRef) {}
+  constructor(
+    private readonly moduleRef: ModuleRef,
+    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: winston.Logger,
+  ) {}
 
   async intercept(
     context: ExecutionContext,
@@ -55,13 +61,16 @@ export class LoadEntityInterceptor implements NestInterceptor {
           req.beforeUpdate = entity;
         }
       } catch (error) {
-        console.error(
-          `Failed to load entity '${entityName}' (${id}) for audit log:`,
-          error.message,
-        );
+        this.handleAuditError(entityName, id, error);
       }
     }
 
     return next.handle();
+  }
+
+  private handleAuditError(entityName, id, error) {
+    const errorMessage = `Failed to load entity '${entityName}' (${id}) for audit log: ${error.message}`;
+    this.logger.error(errorMessage, error);
+    throw new Error(errorMessage);
   }
 }
