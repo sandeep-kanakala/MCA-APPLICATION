@@ -1,6 +1,6 @@
 import { Request } from 'express';
 import { IUserTokenPayload } from './userToken.interface'; // adjust path if needed
-import { User } from '@prisma/client';
+import { User, Prisma } from '@prisma/client';
 
 export interface AuditRequest extends Request {
   entityId?: string;
@@ -14,3 +14,5 @@ export interface AuditRequest extends Request {
 export interface FindOneCapable {
   findOne(id: any): Promise<any>;
 }
+
+export type AuditLogFilter = Prisma.AuditLogWhereInput;

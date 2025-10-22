@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { AuditRequest } from '~/interface';
+import {
+  AuditRequest,
+  AuthenticatedRequest,
+  AuditLogFilter,
+} from '~/interface';
 import { ResponseBuilder } from '@/utils/response.builder';
 import type { Response } from '@/utils/response.builder';
 import { isIUserTokenPayload } from '@/utils/helper';
@@ -108,6 +112,50 @@ export class AuditLogService {
         totalPages: Math.ceil(totalCount / pageSize),
         data: parsedLogs,
       })
+      .build();
+  }
+
+  async getLogsByEntity(
+    entity: string,
+    req: AuthenticatedRequest,
+    entityId?: string,
+    all?: string,
+  ): Promise<Response> {
+    const filterCriteria: AuditLogFilter = { entity };
+
+    if (entityId) filterCriteria.entityId = entityId;
+
+    const roleNames = req.user.roles.map((role) => role.name);
+
+    filterCriteria.userId = req.user.id;
+
+    if (roleNames.includes('ADMIN')) {
+      if (all === 'true') {
+        delete filterCriteria.userId;
+      }
+    }
+
+    const logs = await this.prisma.auditLog.findMany({
+      where: filterCriteria,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const parsedLogs = logs.map((log) => ({
+      id: log.id,
+      action: log.action,
+      performedBy: log.details
+        ? JSON.parse(log.details).user?.email
+        : log.userId,
+      timestamp: log.createdAt,
+      changes: {
+        before: JSON.parse(log.details)?.before || null,
+        after: JSON.parse(log.details)?.after || null,
+      },
+    }));
+
+    return new ResponseBuilder()
+      .withMessage('Entity timeline fetched successfully.')
+      .withData(parsedLogs)
       .build();
   }
 }

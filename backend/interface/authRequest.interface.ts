@@ -1,6 +1,9 @@
 import { Request } from 'express';
-import { User } from '@prisma/client';
+import { Prisma, User } from '@prisma/client';
 
+export type UserWithRoles = Prisma.UserGetPayload<{
+  include: { roles: true };
+}>;
 export interface AuthenticatedRequest extends Request {
-  user: User;
+  user: UserWithRoles;
 }

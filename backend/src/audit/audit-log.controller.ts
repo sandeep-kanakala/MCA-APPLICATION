@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards, Req } from '@nestjs/common';
 import { AuditLogService } from './audit-log.service';
 import {
   ApiBearerAuth,
@@ -10,6 +10,8 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '@/modules/auth/guards/roles.guard';
 import { Roles } from '@/modules/auth/decorators/roles.decorator';
+import type { AuthenticatedRequest } from '~/interface';
+import type { Response } from '@/utils/response.builder';
 
 @ApiTags('Audit Log')
 @Controller('audit-logs')
@@ -50,5 +52,32 @@ export class AuditLogController {
     @Query('limit') limit?: number,
   ): Promise<any> {
     return this.auditLogService.getAllLogs(page, limit);
+  }
+
+  @Get('/:entity')
+  @ApiOperation({
+    summary: 'Get all audit/activity logs as per entity and entityId',
+    description:
+      'Retrieve a list of all audit/activity logs as per entity and entityId for Logged in User',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Audit/Activity logs retrieved successfully for the entity.',
+  })
+  @ApiQuery({ name: 'entityId', required: false, type: String })
+  @ApiQuery({
+    name: 'all',
+    required: false,
+    type: String,
+    description: 'Admin: set true to see all logs of others',
+    example: 'false',
+  })
+  async getEntityLogs(
+    @Param('entity') entity: string,
+    @Req() req: AuthenticatedRequest,
+    @Query('entityId') entityId?: string,
+    @Query('all') all?: string,
+  ): Promise<Response> {
+    return this.auditLogService.getLogsByEntity(entity, req, entityId, all);
   }
 }

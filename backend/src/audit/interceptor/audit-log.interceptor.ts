@@ -9,6 +9,7 @@ import { Observable, from, map, concatMap } from 'rxjs';
 import { AuditLogService } from '../audit-log.service';
 import type { AuditRequest } from '~/interface';
 import { SKIP_AUDIT_KEY } from '../decorators/skip-audit-log.decorator';
+import { AUDIT_ENTITY_KEY } from '../decorators/audit-log.decorator';
 
 @Injectable()
 export class AuditInterceptor<T> implements NestInterceptor {
@@ -31,8 +32,10 @@ export class AuditInterceptor<T> implements NestInterceptor {
       return next.handle();
     }
 
-    const pathSegments = req.path.split('/').filter(Boolean);
-    const entity = pathSegments[0] || 'unknown';
+    const entity =
+      this.reflector.get<string>(AUDIT_ENTITY_KEY, context.getHandler()) ||
+      this.reflector.get<string>(AUDIT_ENTITY_KEY, context.getClass()) ||
+      'unknown';
 
     return next.handle().pipe(
       concatMap((result) => {
