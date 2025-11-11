@@ -1,0 +1,34 @@
+  trigger:
+    - master
+
+  stages:
+  - stage: build
+    jobs:
+    - job: build
+      workspace:
+        clean: all
+      steps:
+      - task: CopyFiles@2
+        displayName: Copy artifacts to publish
+        inputs:
+          SourceFolder: $(Build.SourcesDirectory)
+          Contents: |
+            backend/**
+            frontend/**
+            package.json
+            package-lock.json
+          TargetFolder: $(Build.SourcesDirectory)/pipeline-publish/appcode
+      - task: ArchiveFiles@2
+        displayName: Zip artifacts
+        inputs:
+          rootFolderOrFile: pipeline-publish
+          includeRootFolder: true
+          archiveType: zip
+          archiveFile: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
+          replaceExistingArchive: true
+      - task: PublishPipelineArtifact@1
+        displayName: Publish Artifacts
+        inputs:
+          artifact: multichoice-artifact
+          targetPath: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
+          publishLocation: pipeline

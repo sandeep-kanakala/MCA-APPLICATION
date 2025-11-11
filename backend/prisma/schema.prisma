@@ -1,0 +1,1437 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --------------------------- Enums --------------------------
+
+enum LeadStatus {
+  OPEN
+  WORKING
+  QUALIFIED
+  UNQUALIFIED
+  CONVERTED
+}
+
+enum LeadSource {
+  WEB
+  PHONE_INQUIRY
+  PARTNER
+  ADVERTISING
+  TRADE_SHOW
+  REFERRAL
+  OTHER
+}
+
+enum OpportunityStage {
+  PROSPECTING
+  QUALIFICATION
+  NEEDS_ANALYSIS
+  VALUE_PROPOSITION
+  ID_DECISION_MAKERS
+  PERCEPTION_ANALYSIS
+  PROPOSAL_PRICE_QUOTE
+  NEGOTIATION_REVIEW
+  CLOSED_WON
+  CLOSED_LOST
+}
+
+enum OpportunityType {
+  NEW_BUSINESS
+  EXISTING_BUSINESS
+  UPSALE
+  RENEWAL
+}
+
+enum ActivityStatus {
+  OPEN
+  COMPLETED
+  CANCELED
+}
+
+enum TaskPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum QuoteStatus {
+  DRAFT
+  PRESENTED
+  APPROVED
+  REJECTED
+  EXPIRED
+  ACCEPTED
+}
+
+enum OrderStatus {
+  DRAFT
+  ACTIVATED
+  CANCELLED
+}
+
+enum PriceBookType {
+  STANDARD
+  CUSTOM
+}
+
+enum ContactRole {
+  DECISION_MAKER
+  INFLUENCER
+  EVALUATOR
+  PURCHASER
+  OTHER
+}
+
+enum CampaignStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  ABORTED
+}
+
+enum CampaignType {
+  ADVERTISEMENT
+  EMAIL
+  EVENT
+  PARTNER
+  SOCIAL
+  WEBINAR
+  OTHER
+}
+
+// --- NEW for subscriptions / bundles / assets ---
+
+enum ProductType {
+  GOOD
+  SERVICE
+  SUBSCRIPTION
+}
+
+enum BillingPeriod {
+  DAY
+  WEEK
+  MONTH
+  QUARTER
+  YEAR
+}
+
+enum SubscriptionStatus {
+  DRAFT
+  ACTIVE
+  SUSPENDED
+  CANCELED
+  EXPIRED
+}
+
+enum AssetStatus {
+  PROVISIONING
+  ACTIVE
+  SUSPENDED
+  RETIRED
+}
+
+enum AmendmentType {
+  NEW
+  UPGRADE
+  DOWNGRADE
+  CANCEL
+  RENEWAL
+  SUSPEND
+  RESUME
+}
+
+enum AccountType {
+  PARTNER
+  CUSTOMER
+}
+
+enum AddressType {
+  SHIPPING
+  BILLING
+}
+
+enum AccountStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  PENDING_CONTRACT_APPROVAL
+  ACTIVE
+  CLOSED
+  DORMANT
+  FORGET_ME
+  FRAUD
+  FRAUD_INVESTIGATION
+  PIRACY
+  PIRACY_INVESTIGATION
+  PROSPECT
+  SUSPENDED
+}
+
+enum ContactStatus {
+  ACTIVE
+  DECEASED
+  EMIGRATED
+  FORGET_ME
+  POTENTIAL
+  FRAUD_INVESTIGATION
+  FRAUD
+  CLOSED
+  SUSPENDED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum BillingModel {
+  POD
+  ARC
+}
+
+enum ProductStatus {
+  DRAFT
+  PENDING_APPROVAL
+  ACTIVE
+}
+
+enum Subject {
+  Tenant
+  Team
+  User
+  Permission
+  UserTeam
+  Account
+  Contact
+  Lead
+  Opportunity
+  OpportunityContactRole
+  Product
+  PriceBook
+  PriceBookEntry
+  ProductBundle
+  ProductBundleItem
+  PriceList
+  PriceListEntry
+  Quote
+  QuoteLineItem
+  Order
+  OrderItem
+  Campaign
+  CampaignContactMember
+  CampaignLeadMember
+  Subscription
+  SubscriptionItem
+  Asset
+  Task
+  Event
+  EventParticipant
+  Note
+  Attachment
+}
+
+enum RecurringFrequency {
+  DAILY
+  MONTHLY
+  ONE_TIME
+  USAGE
+  WEEKLY
+  YEARLY
+}
+
+enum OrderItemAction {
+  Disconnect
+  Resume
+  Cancel
+}
+
+enum PricingMode {
+  INHERIT
+  OVERRIDE
+  INCLUDED
+}
+
+// --------------------- Core / System ------------------------
+
+model Tenant {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  domain      String?   @unique
+  isActive    Boolean   @default(true)
+  createdById String?
+  updatedById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
+
+  createdBy          User?               @relation("TenantCreatedBy", fields: [createdById], references: [id])
+  updatedBy          User?               @relation("TenantUpdatedBy", fields: [updatedById], references: [id])
+  users              User[]
+  // roles              Role[]
+  teams              Team[]
+  accounts           Account[]
+  contacts           Contact[]
+  leads              Lead[]
+  opportunities      Opportunity[]
+  products           Product[]
+  priceBooks         PriceBook[]
+  priceBookEntries   PriceBookEntry[]
+  quotes             Quote[]
+  orders             Order[]
+  campaigns          Campaign[]
+  tasks              Task[]
+  events             Event[]
+  productBundles     ProductBundle[]
+  productBundleItems ProductBundleItem[]
+  priceLists         PriceList[]
+  priceListEntries   PriceListEntry[]
+  subscriptions      Subscription[]
+  assets             Asset[]
+  notes              Note[]
+  attachments        Attachment[]
+  Permission         Permission[]
+  Role               Role[]
+}
+
+model Team {
+  id          String     @id @default(cuid())
+  tenantId    String
+  name        String
+  createdById String?
+  updatedById String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  tenant      Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy   User?      @relation("TeamCreatedBy", fields: [createdById], references: [id])
+  updatedBy   User?      @relation("TeamUpdatedBy", fields: [updatedById], references: [id])
+  members     UserTeam[]
+
+  isArchived Boolean   @default(false)
+  archivedAt DateTime?
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+model Role {
+  id          String       @id @default(cuid())
+  tenantId    String
+  name        String
+  createdById String?
+  updatedById String?
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy   User?        @relation("RoleCreatedBy", fields: [createdById], references: [id])
+  updatedBy   User?        @relation("RoleUpdatedBy", fields: [updatedById], references: [id])
+  users       User[]       @relation("UserRoles")
+  permissions Permission[] @relation("RolePermissions")
+
+  @@unique([tenantId, name], name: "tenantId_name")
+  @@index([tenantId])
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  description String?
+  subject     Subject?
+  createdById String?
+  updatedById String?
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy User?  @relation("PermissionCreatedBy", fields: [createdById], references: [id])
+  updatedBy User?  @relation("PermissionUpdatedBy", fields: [updatedById], references: [id])
+  Role      Role[] @relation("RolePermissions")
+
+  @@unique([tenantId, name], name: "tenantId_name")
+  @@index([tenantId])
+}
+
+model User {
+  id         String    @id @default(cuid())
+  tenantId   String
+  email      String    @unique
+  firstName  String
+  middleName String?
+  lastName   String
+  phoneNo    String?
+  password   String?
+  managerId  String?
+  timeZone   String?   @db.VarChar(64)
+  locale     String?   @db.VarChar(16)
+  createdAt  DateTime  @default(now())
+  createdBy  String?
+  updatedAt  DateTime  @updatedAt
+  updatedBy  String?
+  isArchived Boolean   @default(false)
+  archivedAt DateTime?
+  otp        String?
+
+  tenant        Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  roles         Role[]     @relation("UserRoles")
+  manager       User?      @relation("UserManager", fields: [managerId], references: [id])
+  reports       User[]     @relation("UserManager")
+  teams         UserTeam[]
+  createdByUser User?      @relation("userCreatedBy", fields: [createdBy], references: [id])
+  createdUsers  User[]     @relation("userCreatedBy")
+  updatedByUser User?      @relation("userUpdatedBy", fields: [updatedBy], references: [id])
+  updatedUsers  User[]     @relation("userUpdatedBy")
+
+  createdAccounts Account[] @relation("AccountCreatedBy")
+  updatedAccounts Account[] @relation("AccountUpdatedBy")
+
+  createdAssets Asset[] @relation("AssetCreatedBy")
+  updatedAssets Asset[] @relation("AssetUpdatedBy")
+
+  createdContacts Contact[] @relation("ContactCreatedBy")
+  updatedContacts Contact[] @relation("ContactUpdatedBy")
+
+  createdLeads Lead[] @relation("LeadCreatedBy")
+  updatedLeads Lead[] @relation("LeadUpdatedBy")
+
+  createdOpps Opportunity[] @relation("OpportunityCreatedBy")
+  updatedOpps Opportunity[] @relation("OpportunityUpdatedBy")
+
+  createdQuotes Quote[] @relation("QuoteCreatedBy")
+  updatedQuotes Quote[] @relation("QuoteUpdatedBy")
+
+  createdOrders Order[] @relation("OrderCreatedBy")
+  updatedOrders Order[] @relation("OrderUpdatedBy")
+
+  createdTasks  Task[] @relation("TaskCreator")
+  updatedTasks  Task[] @relation("TaskUpdatedBy")
+  assignedTasks Task[] @relation("TaskAssignee")
+
+  createdEvents Event[]            @relation("EventCreator")
+  updatedEvents Event[]            @relation("EventUpdatedBy")
+  participants  EventParticipant[]
+
+  createdNotes        Note[]       @relation("NoteCreatedBy")
+  updatedNotes        Note[]       @relation("NoteUpdatedBy")
+  uploadedAttachments Attachment[] @relation("AttachmentUploadedBy")
+  updatedAttachments  Attachment[] @relation("AttachmentUpdatedBy")
+
+  createdTeams              Team[]              @relation("TeamCreatedBy")
+  updatedTeams              Team[]              @relation("TeamUpdatedBy")
+  createdTenants            Tenant[]            @relation("TenantCreatedBy")
+  updatedTenants            Tenant[]            @relation("TenantUpdatedBy")
+  createdRoles              Role[]              @relation("RoleCreatedBy")
+  updatedRoles              Role[]              @relation("RoleUpdatedBy")
+  createdPermissions        Permission[]        @relation("PermissionCreatedBy")
+  updatedPermissions        Permission[]        @relation("PermissionUpdatedBy")
+  createdProducts           Product[]           @relation("ProductCreatedBy")
+  updatedProducts           Product[]           @relation("ProductUpdatedBy")
+  createdPriceBooks         PriceBook[]         @relation("PriceBookCreatedBy")
+  updatedPriceBooks         PriceBook[]         @relation("PriceBookUpdatedBy")
+  createdPriceBookEntries   PriceBookEntry[]    @relation("PriceBookEntryCreatedBy")
+  updatedPriceBookEntries   PriceBookEntry[]    @relation("PriceBookEntryUpdatedBy")
+  createdProductBundles     ProductBundle[]     @relation("ProductBundleCreatedBy")
+  updatedProductBundles     ProductBundle[]     @relation("ProductBundleUpdatedBy")
+  createdProductBundleItems ProductBundleItem[] @relation("ProductBundleItemCreatedBy")
+  updatedProductBundleItems ProductBundleItem[] @relation("ProductBundleItemUpdatedBy")
+  createdPriceLists         PriceList[]         @relation("PriceListCreatedBy")
+  updatedPriceLists         PriceList[]         @relation("PriceListUpdatedBy")
+  createdPriceListEntries   PriceListEntry[]    @relation("PriceListEntryCreatedBy")
+  updatedPriceListEntries   PriceListEntry[]    @relation("PriceListEntryUpdatedBy")
+  createdQuoteLineItems     QuoteLineItem[]     @relation("QuoteLineItemCreatedBy")
+  updatedQuoteLineItems     QuoteLineItem[]     @relation("QuoteLineItemUpdatedBy")
+  createdOrderItems         OrderItem[]         @relation("OrderItemCreatedBy")
+  updatedOrderItems         OrderItem[]         @relation("OrderItemUpdatedBy")
+  createdCampaigns          Campaign[]          @relation("CampaignCreatedBy")
+  updatedCampaigns          Campaign[]          @relation("CampaignUpdatedBy")
+  createdSubscriptions      Subscription[]      @relation("SubscriptionCreatedBy")
+  updatedSubscriptions      Subscription[]      @relation("SubscriptionUpdatedBy")
+  createdSubscriptionItems  SubscriptionItem[]  @relation("SubscriptionItemCreatedBy")
+  updatedSubscriptionItems  SubscriptionItem[]  @relation("SubscriptionItemUpdatedBy")
+  createdAddress            Address[]           @relation("AddressCreatedBy")
+  updatedAddress            Address[]           @relation("AddressUpdatedBy")
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+}
+
+model UserTeam {
+  userId String
+  teamId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@id([userId, teamId])
+}
+
+// ---------------------- Sales Objects -----------------------
+
+model Address {
+  id               String      @id @default(cuid())
+  name             String
+  province         String?
+  city             String
+  street           String
+  postalCode       String
+  country          String
+  isDefault        Boolean?
+  isPrimary        Boolean?
+  addressType      AddressType
+  icxAddressNumber String?
+  isArchived       Boolean     @default(false)
+  parentId         String
+  parent           Account     @relation(fields: [parentId], references: [id])
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  createdById      String?
+  updatedById      String?
+  createdBy        User?       @relation("AddressCreatedBy", fields: [createdById], references: [id])
+  updatedBy        User?       @relation("AddressUpdatedBy", fields: [updatedById], references: [id])
+}
+
+model Account {
+  id                    String        @id @default(cuid())
+  tenantId              String
+  name                  String
+  type                  AccountType
+  autoNumber            String        @db.VarChar(10)
+  euid                  String //country code + auto number + random
+  currencyCode          String?       @db.VarChar(3)
+  preferredLanguage     String?
+  status                AccountStatus @default(ACTIVE)
+  countryCode           String
+  icxAccountNumber      String?
+  signupOrigin          String?
+  viewingPlatform       String?
+  type_c                String? //relation to the same table to partner account    customer belongs to which partner
+  segment               String?
+  partnerCustomerNumber String?
+  recordTypeDevName     String?
+  sameAsBilling         Boolean       @default(false)
+
+  createdById String?
+  updatedById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy User?  @relation("AccountCreatedBy", fields: [createdById], references: [id])
+  updatedBy User?  @relation("AccountUpdatedBy", fields: [updatedById], references: [id])
+
+  address        Address[]
+  contacts       Contact[]
+  opportunities  Opportunity[]
+  quotes         Quote[]
+  orders         Order[]
+  convertedLeads Lead[]         @relation("LeadToAccount")
+  priceList      PriceList?
+  subscriptions  Subscription[]
+  assets         Asset[]
+  tasks          Task[]
+  events         Event[]
+  notes          Note[]
+  attachments    Attachment[]
+
+  billedorders Order[] @relation("OrderBillingAccount")
+
+  // Optional: full-text search vector (managed via SQL migration)
+  searchVector Unsupported("tsvector")?
+
+  @@unique([id, tenantId, name])
+  @@index([tenantId])
+  @@index([searchVector], type: Gin)
+}
+
+model Contact {
+  id                      String        @id @default(cuid())
+  tenantId                String
+  accountId               String
+  email                   String
+  phone                   String?       @db.VarChar(32)
+  salutation              String
+  firstName               String
+  middleName              String?
+  lastName                String
+  birthDate               DateTime?     @db.Date()
+  currencyCode            String?       @db.VarChar(3)
+  age                     Int?
+  status                  ContactStatus?
+  autoNumber              String
+  contactNumber           String
+  idType                  String        @default("Passport Number")
+  passportExpirationDate  DateTime?
+  passportNumber          String?
+  idNumber                String?
+  countryCode             String
+  icxContactNumber        String?
+  partnerCustomerNumber   String?
+  language                String?
+  signupOrigin            String?
+  communicationPreference String?
+  segment                 String?
+  gender                  Gender?
+
+  createdById String?
+  updatedById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
+
+  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  account   Account @relation(fields: [accountId], references: [id])
+  createdBy User?   @relation("ContactCreatedBy", fields: [createdById], references: [id])
+  updatedBy User?   @relation("ContactUpdatedBy", fields: [updatedById], references: [id])
+
+  oppRoles            OpportunityContactRole[]
+  campaignMemberships CampaignContactMember[]
+  convertedLeads      Lead[]                   @relation("LeadToContact")
+  tasks               Task[]
+  events              Event[]
+  notes               Note[]
+  attachments         Attachment[]
+
+  searchVector Unsupported("tsvector")?
+
+  @@unique([id, tenantId, email])
+  @@index([tenantId])
+  @@index([accountId])
+  @@index([searchVector], type: Gin)
+}
+
+model Lead {
+  id                     String      @id @default(cuid())
+  tenantId               String
+  company                String
+  firstName              String
+  lastName               String
+  email                  String?
+  phone                  String?     @db.VarChar(32)
+  source                 LeadSource?
+  status                 LeadStatus  @default(OPEN)
+  createdById            String?
+  updatedById            String?
+  convertedAt            DateTime?
+  convertedContactId     String?
+  convertedAccountId     String?
+  convertedOpportunityId String?
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  isArchived Boolean   @default(false)
+  archivedAt DateTime?
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy User?  @relation("LeadCreatedBy", fields: [createdById], references: [id])
+  updatedBy User?  @relation("LeadUpdatedBy", fields: [updatedById], references: [id])
+
+  convertedContact     Contact?     @relation("LeadToContact", fields: [convertedContactId], references: [id])
+  convertedAccount     Account?     @relation("LeadToAccount", fields: [convertedAccountId], references: [id])
+  convertedOpportunity Opportunity? @relation("LeadToOpportunity", fields: [convertedOpportunityId], references: [id])
+
+  campaignMemberships CampaignLeadMember[]
+  tasks               Task[]
+  events              Event[]
+  notes               Note[]
+  attachments         Attachment[]
+
+  searchVector Unsupported("tsvector")?
+
+  @@unique([id, tenantId, email])
+  @@index([tenantId])
+  @@index([searchVector], type: Gin)
+}
+
+model Opportunity {
+  id           String           @id @default(cuid())
+  tenantId     String
+  accountId    String
+  name         String
+  amount       Decimal?         @db.Decimal(18, 2)
+  currencyCode String?          @db.VarChar(3)
+  stage        OpportunityStage
+  type         OpportunityType?
+  probability  Int?             @db.SmallInt // 0-100
+  leadSource   LeadSource?
+  campaignId   String?
+  closeDate    DateTime?
+  description  String?
+
+  createdById String?
+  updatedById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  account   Account   @relation(fields: [accountId], references: [id])
+  createdBy User?     @relation("OpportunityCreatedBy", fields: [createdById], references: [id])
+  updatedBy User?     @relation("OpportunityUpdatedBy", fields: [updatedById], references: [id])
+  campaign  Campaign? @relation(fields: [campaignId], references: [id])
+
+  contacts       OpportunityContactRole[]
+  quotes         Quote[]
+  orders         Order[]
+  convertedLeads Lead[]                   @relation("LeadToOpportunity")
+  tasks          Task[]
+  events         Event[]
+  notes          Note[]
+  attachments    Attachment[]
+
+  @@unique([id, tenantId, accountId, name])
+  @@index([tenantId])
+  @@index([accountId])
+  @@index([stage])
+  @@index([closeDate])
+}
+
+model OpportunityContactRole {
+  opportunityId String
+  contactId     String
+  role          ContactRole?
+  isPrimary     Boolean      @default(false)
+
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  contact     Contact     @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@id([opportunityId, contactId])
+}
+
+// -------------------- Products & Pricing --------------------
+
+model Product {
+  id                    String        @id @default(cuid())
+  tenantId              String
+  name                  String
+  commercialName        String?
+  productCode           String        @db.VarChar(64)
+  description           String?
+  family                String?       @db.VarChar(64)
+  subFamily             String?       @db.VarChar(64)
+  category              String?
+  isActive              Boolean       @default(true)
+  status                ProductStatus
+  isOrderable           Boolean?      @default(true)
+  sellingStartDate      DateTime?     @db.Date
+  sellingEndDate        DateTime?     @db.Date
+  fulfilmentStartDate   DateTime?     @db.Date
+  endOfLifeDate         DateTime?     @db.Date
+  // unitPrice             Decimal?      @db.Decimal(18, 2)
+  currencyCode          String?       @db.VarChar(3)
+  billingModel          BillingModel?
+  commitmentDuration    Int?
+  billingFrequency      Int?
+  commitmentDurationUoM String?
+  currency              String?
+  specificationType     String?
+  isBundle              Boolean       @default(false) //subType
+  productSpecName       String?
+
+  createdById String?
+  updatedById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
+
+  tenant           Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy        User?            @relation("ProductCreatedBy", fields: [createdById], references: [id])
+  updatedBy        User?            @relation("ProductUpdatedBy", fields: [updatedById], references: [id])
+  priceBookEntries PriceBookEntry[]
+
+  // NEW relations
+  bundlesAsParent   ProductBundle[]     @relation("BundleParent")
+  bundlesAsItem     ProductBundleItem[] @relation("BundleItemProduct")
+  assets            Asset[]
+  subscriptionItems SubscriptionItem[]
+  priceListEntries  PriceListEntry[]
+
+  @@unique([id, tenantId, name])
+  @@unique([id, tenantId, productCode])
+  @@index([tenantId])
+}
+
+model PriceBook {
+  id           String        @id @default(cuid())
+  tenantId     String
+  name         String
+  description  String?
+  type         PriceBookType @default(CUSTOM)
+  isActive     Boolean       @default(true)
+  currencyCode String?       @db.VarChar(3)
+  countryCode  String?
+  createdById  String?
+  updatedById  String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  isArchived   Boolean       @default(false)
+  archivedAt   DateTime?
+
+  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy User?            @relation("PriceBookCreatedBy", fields: [createdById], references: [id])
+  updatedBy User?            @relation("PriceBookUpdatedBy", fields: [updatedById], references: [id])
+  entries   PriceBookEntry[]
+  priceList PriceList?       @relation("PriceBookPriceList")
+
+  @@unique([id, tenantId, name])
+  @@index([tenantId])
+}
+
+model PriceBookEntry {
+  id               String           @id @default(cuid())
+  tenantId         String
+  priceBookId      String
+  productId        String
+  unitPrice        Decimal          @db.Decimal(18, 2)
+  currencyCode     String           @db.VarChar(3)
+  isActive         Boolean          @default(true)
+  createdById      String?
+  updatedById      String?
+  priceBook        PriceBook        @relation(fields: [priceBookId], references: [id], onDelete: Cascade)
+  product          Product          @relation(fields: [productId], references: [id])
+  tenant           Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy        User?            @relation("PriceBookEntryCreatedBy", fields: [createdById], references: [id])
+  updatedBy        User?            @relation("PriceBookEntryUpdatedBy", fields: [updatedById], references: [id])
+  quoteLineItems   QuoteLineItem[]
+  orderItems       OrderItem[]
+  priceListEntries PriceListEntry[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  isArchived       Boolean          @default(false)
+  archivedAt       DateTime?
+
+  @@unique([id, tenantId, priceBookId, productId])
+  @@index([tenantId])
+  @@index([productId])
+}
+
+model ProductBundle {
+  id              String  @id @default(cuid())
+  tenantId        String
+  parentProductId String
+  name            String
+  description     String?
+  isActive        Boolean @default(true)
+  createdById     String?
+  updatedById     String?
+
+  tenant         Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parent         Product             @relation("BundleParent", fields: [parentProductId], references: [id])
+  createdBy      User?               @relation("ProductBundleCreatedBy", fields: [createdById], references: [id])
+  updatedBy      User?               @relation("ProductBundleUpdatedBy", fields: [updatedById], references: [id])
+  items          ProductBundleItem[]
+  quoteLineItems QuoteLineItem[]
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  isArchived Boolean   @default(false)
+  archivedAt DateTime?
+
+  @@unique([id, tenantId, parentProductId, name])
+  @@index([tenantId])
+}
+
+model ProductBundleItem {
+  id              String @id @default(cuid())
+  name            String @default(uuid())
+  tenantId        String
+  bundleId        String
+  productId       String
+  parentProductId String
+  quantity        Int    @default(1)
+  minquantity     Int
+  maxquantity     Int
+  currency        String
+  sequence        Int
+
+  // pricing behavior: INHERIT uses price list/price book; OVERRIDE uses overridePrice
+  // pricingMode   PricingMode @default(INHERIT) // INHERIT | OVERRIDE | INCLUDED (0)
+  // overridePrice Decimal?    @db.Decimal(18, 2)
+  // isRequired    Boolean     @default(true)
+  createdById String?
+  updatedById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
+
+  bundle    ProductBundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  product   Product       @relation("BundleItemProduct", fields: [productId], references: [id])
+  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy User?         @relation("ProductBundleItemCreatedBy", fields: [createdById], references: [id])
+  updatedBy User?         @relation("ProductBundleItemUpdatedBy", fields: [updatedById], references: [id])
+
+  @@unique([id, bundleId, productId])
+  @@index([tenantId])
+}
+
+// NEW: Price Lists (customer/region/contract specific) integrated with PriceBook and Products
+model PriceList {
+  id            String    @id @default(cuid())
+  tenantId      String
+  name          String
+  description   String?
+  code          String
+  currencyCode  String?   @db.VarChar(3)
+  country       String
+  isActive      Boolean   @default(true)
+  accountType   String
+  accountId     String
+  effectiveFrom DateTime?
+  effectiveTo   DateTime?
+  isTaxable     Boolean?
+  createdById   String?
+  updatedById   String?
+
+  priceBookId String    @unique
+  priceBook   PriceBook @relation("PriceBookPriceList", fields: [priceBookId], references: [id])
+
+  tenant     Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  account    Account          @relation(fields: [accountId], references: [id])
+  createdBy  User?            @relation("PriceListCreatedBy", fields: [createdById], references: [id])
+  updatedBy  User?            @relation("PriceListUpdatedBy", fields: [updatedById], references: [id])
+  entries    PriceListEntry[]
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  isArchived Boolean          @default(false)
+  archivedAt DateTime?
+
+  @@unique([id, tenantId, name])
+  @@unique([accountId])
+  @@index([tenantId])
+}
+
+model PriceListEntry {
+  id                 String              @id @default(cuid())
+  tenantId           String
+  name               String
+  description        String?
+  priceListId        String
+  priceBookEntryId   String?
+  productId          String
+  // unitPrice          Decimal?           @db.Decimal(18, 2) // optional override
+  discountPct        Decimal?            @db.Decimal(5, 2) // 0-100
+  amount             Int
+  currencyCode       String?             @db.VarChar(3)
+  effectiveFrom      DateTime            @db.Date
+  effectiveTo        DateTime?           @db.Date
+  isActive           Boolean             @default(true)
+  type               String?
+  virtualPrice       Boolean?
+  override           Boolean?
+  recurringFrequency RecurringFrequency?
+  createdById        String?
+  updatedById        String?
+
+  priceList      PriceList       @relation(fields: [priceListId], references: [id], onDelete: Cascade)
+  priceBookEntry PriceBookEntry? @relation(fields: [priceBookEntryId], references: [id])
+  product        Product         @relation(fields: [productId], references: [id])
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy      User?           @relation("PriceListEntryCreatedBy", fields: [createdById], references: [id])
+  updatedBy      User?           @relation("PriceListEntryUpdatedBy", fields: [updatedById], references: [id])
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  isArchived     Boolean         @default(false)
+  archivedAt     DateTime?
+
+  @@unique([id, tenantId, priceListId, productId, effectiveFrom])
+  @@index([tenantId])
+  @@index([productId])
+}
+
+model Quote {
+  id            String      @id @default(cuid())
+  tenantId      String
+  opportunityId String
+  accountId     String
+  status        QuoteStatus @default(DRAFT)
+  validUntil    DateTime?
+
+  billingStreet  String? @db.VarChar(256)
+  billingCity    String? @db.VarChar(128)
+  billingState   String? @db.VarChar(128)
+  billingPostal  String? @db.VarChar(32)
+  billingCountry String? @db.VarChar(128)
+
+  shippingStreet  String? @db.VarChar(256)
+  shippingCity    String? @db.VarChar(128)
+  shippingState   String? @db.VarChar(128)
+  shippingPostal  String? @db.VarChar(32)
+  shippingCountry String? @db.VarChar(128)
+
+  totalAmount  Decimal @default(0) @db.Decimal(18, 2)
+  currencyCode String  @db.VarChar(3)
+
+  createdById String?
+  updatedById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
+
+  tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  opportunity Opportunity     @relation(fields: [opportunityId], references: [id])
+  account     Account         @relation(fields: [accountId], references: [id])
+  createdBy   User?           @relation("QuoteCreatedBy", fields: [createdById], references: [id])
+  updatedBy   User?           @relation("QuoteUpdatedBy", fields: [updatedById], references: [id])
+  items       QuoteLineItem[]
+  orders      Order[]
+  notes       Note[]
+  attachments Attachment[]
+
+  @@index([tenantId])
+  @@index([opportunityId])
+}
+
+model QuoteLineItem {
+  id               String  @id @default(cuid())
+  quoteId          String
+  priceBookEntryId String
+  quantity         Int     @default(1)
+  unitPrice        Decimal @db.Decimal(18, 2)
+  discount         Decimal @default(0) @db.Decimal(18, 2)
+  netAmount        Decimal @db.Decimal(18, 2)
+
+  // NEW: bundle / subscription hints
+  bundleId      String? // if this line is the parent of a bundle
+  billingPeriod BillingPeriod? // for subscription quotes
+  termMonths    Int?
+  createdById   String?
+  updatedById   String?
+
+  quote          Quote          @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  priceBookEntry PriceBookEntry @relation(fields: [priceBookEntryId], references: [id])
+  bundle         ProductBundle? @relation(fields: [bundleId], references: [id])
+  createdBy      User?          @relation("QuoteLineItemCreatedBy", fields: [createdById], references: [id])
+  updatedBy      User?          @relation("QuoteLineItemUpdatedBy", fields: [updatedById], references: [id])
+  isArchived     Boolean        @default(false)
+  archivedAt     DateTime?
+
+  @@index([quoteId])
+}
+
+model Order {
+  id               String      @id @default(cuid())
+  tenantId         String
+  customerId       String
+  billingAccountId String
+  opportunityId    String?
+  quoteId          String?
+  orderNumber      Int         @default(autoincrement())
+  status           OrderStatus @default(DRAFT)
+  orderedAt        DateTime?   @default(now())
+  activatedAt      DateTime?
+  // recordTypeId  String // foreign key to RecordType
+  // type          RecordType  @relation(fields: [recordTypeId], references: [id])
+
+  totalAmount  Decimal @default(0) @db.Decimal(18, 2)
+  currencyCode String  @db.VarChar(3)
+
+  originalOrderId String?
+
+  createdById String?
+  updatedById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
+
+  tenant         Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer       Account        @relation(fields: [customerId], references: [id])
+  opportunity    Opportunity?   @relation(fields: [opportunityId], references: [id])
+  quote          Quote?         @relation(fields: [quoteId], references: [id])
+  createdBy      User?          @relation("OrderCreatedBy", fields: [createdById], references: [id])
+  updatedBy      User?          @relation("OrderUpdatedBy", fields: [updatedById], references: [id])
+  items          OrderItem[]
+  originalOrder  Order?         @relation("OrderAmendments", fields: [originalOrderId], references: [id])
+  amendedOrders  Order[]        @relation("OrderAmendments")
+  subscriptions  Subscription[]
+  notes          Note[]
+  attachments    Attachment[]
+  billingAccount Account        @relation("OrderBillingAccount", fields: [billingAccountId], references: [id])
+
+  @@unique([id, tenantId, orderNumber])
+  @@index([tenantId])
+}
+
+model OrderItem {
+  id               String           @id @default(cuid())
+  orderId          String
+  priceBookEntryId String
+  quantity         Int              @default(1)
+  unitPrice        Decimal          @db.Decimal(18, 2)
+  discount         Decimal          @default(0) @db.Decimal(18, 2)
+  netAmount        Decimal          @db.Decimal(18, 2)
+  action           OrderItemAction?
+
+  serviceStartAt DateTime?
+  serviceEndAt   DateTime?
+  billingPeriod  BillingPeriod?
+  termMonths     Int?
+  subscriptionId String?
+  assetId        String?
+  createdById    String?
+  updatedById    String?
+
+  order          Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  priceBookEntry PriceBookEntry @relation(fields: [priceBookEntryId], references: [id])
+  subscription   Subscription?  @relation(fields: [subscriptionId], references: [id])
+  asset          Asset?         @relation(fields: [assetId], references: [id])
+  createdBy      User?          @relation("OrderItemCreatedBy", fields: [createdById], references: [id])
+  updatedBy      User?          @relation("OrderItemUpdatedBy", fields: [updatedById], references: [id])
+  // isArchived     Boolean        @default(false)
+  // archivedAt     DateTime?
+
+  @@index([orderId])
+  @@index([subscriptionId])
+  @@index([assetId])
+}
+
+// ---------------------- Campaigns ---------------------------
+
+model Campaign {
+  id              String         @id @default(cuid())
+  tenantId        String
+  name            String
+  type            CampaignType?
+  status          CampaignStatus @default(PLANNED)
+  startDate       DateTime?
+  endDate         DateTime?
+  expectedRevenue Decimal?       @db.Decimal(18, 2)
+  budgetedCost    Decimal?       @db.Decimal(18, 2)
+  actualCost      Decimal?       @db.Decimal(18, 2)
+  isActive        Boolean        @default(true)
+  createdById     String?
+  updatedById     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant         Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy      User?                   @relation("CampaignCreatedBy", fields: [createdById], references: [id])
+  updatedBy      User?                   @relation("CampaignUpdatedBy", fields: [updatedById], references: [id])
+  opportunities  Opportunity[]
+  contactMembers CampaignContactMember[]
+  leadMembers    CampaignLeadMember[]
+  isArchived     Boolean                 @default(false)
+  archivedAt     DateTime?
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+model CampaignContactMember {
+  id         String  @id @default(cuid())
+  campaignId String
+  contactId  String
+  status     String? @db.VarChar(64) // e.g., Sent, Responded
+
+  campaign   Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact    Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  isArchived Boolean   @default(false)
+  archivedAt DateTime?
+
+  @@unique([campaignId, contactId])
+}
+
+model CampaignLeadMember {
+  id         String  @id @default(cuid())
+  campaignId String
+  leadId     String
+  status     String? @db.VarChar(64)
+
+  campaign   Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  lead       Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  isArchived Boolean   @default(false)
+  archivedAt DateTime?
+
+  @@unique([campaignId, leadId])
+}
+
+// ------------------- Subscriptions & Assets -----------------
+model Subscription {
+  id            String             @id @default(cuid())
+  tenantId      String
+  accountId     String
+  orderId       String? // originating order (NEW/RENEWAL/UPGRADE/DOWNGRADE)
+  status        SubscriptionStatus @default(DRAFT)
+  startAt       DateTime?
+  endAt         DateTime?
+  nextBillingAt DateTime?
+  billingPeriod BillingPeriod?
+  termMonths    Int?
+  autoRenew     Boolean            @default(true)
+  currencyCode  String?            @db.VarChar(3)
+  createdById   String?
+  updatedById   String?
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  isArchived Boolean   @default(false)
+  archivedAt DateTime?
+
+  tenant     Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  account    Account            @relation(fields: [accountId], references: [id])
+  order      Order?             @relation(fields: [orderId], references: [id])
+  createdBy  User?              @relation("SubscriptionCreatedBy", fields: [createdById], references: [id])
+  updatedBy  User?              @relation("SubscriptionUpdatedBy", fields: [updatedById], references: [id])
+  items      SubscriptionItem[]
+  assets     Asset[]
+  orderItems OrderItem[]
+
+  @@index([tenantId])
+  @@index([accountId])
+}
+
+model SubscriptionItem {
+  id             String         @id @default(cuid())
+  subscriptionId String
+  productId      String
+  quantity       Int            @default(1)
+  unitPrice      Decimal?       @db.Decimal(18, 2)
+  discount       Decimal        @default(0) @db.Decimal(18, 2)
+  netAmount      Decimal?       @db.Decimal(18, 2)
+  billingPeriod  BillingPeriod?
+  createdById    String?
+  updatedById    String?
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  product      Product      @relation(fields: [productId], references: [id])
+  createdBy    User?        @relation("SubscriptionItemCreatedBy", fields: [createdById], references: [id])
+  updatedBy    User?        @relation("SubscriptionItemUpdatedBy", fields: [updatedById], references: [id])
+  isArchived   Boolean      @default(false)
+  archivedAt   DateTime?
+
+  @@index([subscriptionId])
+  @@index([productId])
+}
+
+model Asset {
+  id             String      @id @default(cuid())
+  tenantId       String
+  accountId      String
+  productId      String
+  subscriptionId String?
+  serial         String?     @db.VarChar(128)
+  status         AssetStatus @default(PROVISIONING)
+  activatedAt    DateTime?
+  expiresAt      DateTime?
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  account      Account       @relation(fields: [accountId], references: [id])
+  product      Product       @relation(fields: [productId], references: [id])
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
+  orderItems   OrderItem[]
+  isArchived   Boolean       @default(false)
+  archivedAt   DateTime?
+  createdById  String?
+  updatedById  String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  createdBy User? @relation("AssetCreatedBy", fields: [createdById], references: [id])
+  updatedBy User? @relation("AssetUpdatedBy", fields: [updatedById], references: [id])
+
+  @@index([tenantId])
+  @@index([accountId])
+  @@index([subscriptionId])
+}
+
+// ------------------- Activities (Tasks/Events) --------------
+
+model Task {
+  id          String         @id @default(cuid())
+  tenantId    String
+  subject     String
+  description String?
+  status      ActivityStatus @default(OPEN)
+  priority    TaskPriority   @default(NORMAL)
+  dueDate     DateTime?
+
+  createdById  String
+  assignedToId String?
+
+  accountId     String?
+  contactId     String?
+  opportunityId String?
+  leadId        String?
+  updatedById   String?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy   User         @relation("TaskCreator", fields: [createdById], references: [id])
+  updatedBy   User?        @relation("TaskUpdatedBy", fields: [updatedById], references: [id])
+  assignedTo  User?        @relation("TaskAssignee", fields: [assignedToId], references: [id])
+  account     Account?     @relation(fields: [accountId], references: [id])
+  contact     Contact?     @relation(fields: [contactId], references: [id])
+  opportunity Opportunity? @relation(fields: [opportunityId], references: [id])
+  lead        Lead?        @relation(fields: [leadId], references: [id])
+  notes       Note[]
+  attachments Attachment[]
+
+  @@index([tenantId])
+  @@index([assignedToId])
+  @@index([accountId])
+  @@index([opportunityId])
+}
+
+model Event {
+  id          String   @id @default(cuid())
+  tenantId    String
+  subject     String
+  description String?
+  startAt     DateTime
+  endAt       DateTime
+  location    String?  @db.VarChar(256)
+
+  createdById String
+
+  accountId     String?
+  contactId     String?
+  opportunityId String?
+  leadId        String?
+  updatedById   String?
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  isArchived Boolean   @default(false)
+  archivedAt DateTime?
+
+  tenant       Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy    User               @relation("EventCreator", fields: [createdById], references: [id])
+  updatedBy    User?              @relation("EventUpdatedBy", fields: [updatedById], references: [id])
+  account      Account?           @relation(fields: [accountId], references: [id])
+  contact      Contact?           @relation(fields: [contactId], references: [id])
+  opportunity  Opportunity?       @relation(fields: [opportunityId], references: [id])
+  lead         Lead?              @relation(fields: [leadId], references: [id])
+  participants EventParticipant[]
+  notes        Note[]
+  attachments  Attachment[]
+
+  @@index([tenantId])
+  @@index([accountId])
+  @@index([opportunityId])
+}
+
+model EventParticipant {
+  eventId     String
+  userId      String
+  isOrganizer Boolean @default(false)
+
+  event      Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isArchived Boolean   @default(false)
+  archivedAt DateTime?
+
+  @@id([eventId, userId])
+}
+
+// --------------------- Notes & Files ------------------------
+
+model Note {
+  id       String @id @default(cuid())
+  tenantId String
+  body     String
+
+  // Attach notes to one of these (nullable polymorphism; enforce in app or via SQL CHECK in a custom migration)
+  accountId     String?
+  contactId     String?
+  leadId        String?
+  opportunityId String?
+  quoteId       String?
+  orderId       String?
+  taskId        String?
+  eventId       String?
+
+  createdById String
+  updatedById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy User   @relation("NoteCreatedBy", fields: [createdById], references: [id])
+  updatedBy User?  @relation("NoteUpdatedBy", fields: [updatedById], references: [id])
+
+  account     Account?     @relation(fields: [accountId], references: [id])
+  contact     Contact?     @relation(fields: [contactId], references: [id])
+  lead        Lead?        @relation(fields: [leadId], references: [id])
+  opportunity Opportunity? @relation(fields: [opportunityId], references: [id])
+  quote       Quote?       @relation(fields: [quoteId], references: [id])
+  order       Order?       @relation(fields: [orderId], references: [id])
+  task        Task?        @relation(fields: [taskId], references: [id])
+  event       Event?       @relation(fields: [eventId], references: [id])
+
+  @@index([tenantId])
+}
+
+model Attachment {
+  id         String  @id @default(cuid())
+  tenantId   String
+  fileName   String
+  mimeType   String  @db.VarChar(128)
+  byteSize   Int
+  storageKey String // key in S3/GCS/etc.
+  url        String? // optional pre-signed/public URL
+
+  accountId     String?
+  contactId     String?
+  leadId        String?
+  opportunityId String?
+  quoteId       String?
+  orderId       String?
+  taskId        String?
+  eventId       String?
+
+  uploadedById String
+  updatedById  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  isArchived   Boolean   @default(false)
+  archivedAt   DateTime?
+
+  tenant     Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  uploadedBy User   @relation("AttachmentUploadedBy", fields: [uploadedById], references: [id])
+  updatedBy  User?  @relation("AttachmentUpdatedBy", fields: [updatedById], references: [id])
+
+  account     Account?     @relation(fields: [accountId], references: [id])
+  contact     Contact?     @relation(fields: [contactId], references: [id])
+  lead        Lead?        @relation(fields: [leadId], references: [id])
+  opportunity Opportunity? @relation(fields: [opportunityId], references: [id])
+  quote       Quote?       @relation(fields: [quoteId], references: [id])
+  order       Order?       @relation(fields: [orderId], references: [id])
+  task        Task?        @relation(fields: [taskId], references: [id])
+  event       Event?       @relation(fields: [eventId], references: [id])
+
+  @@index([tenantId])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  tenantId  String?
+  userId    String?
+  entity    String
+  entityId  String
+  action    String // CREATE, UPDATE, DELETE
+  details   String // JSON string: { before?, after? }
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([tenantId, entity, entityId])
+  @@index([tenantId])
+  @@index([userId])
+}

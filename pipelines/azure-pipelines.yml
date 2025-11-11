@@ -1,0 +1,98 @@
+trigger: none
+
+resources:
+  pipelines:
+  - pipeline: build_pipeline
+    source: MultiChoice-build-pipeline
+    trigger:
+      branches:
+        include:
+        - master
+
+stages:
+  - stage: multichoice_dev
+    jobs:
+      - deployment: multichoice_ssh_deployment
+        environment: Multichoice-dev
+        workspace:
+          clean: all
+        pool:
+          vmImage: ubuntu-latest
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+              - checkout: none
+              - download: build_pipeline
+                displayName: Download artifacts
+                artifact: multichoice-artifact
+              - task: ExtractFiles@1
+                displayName: Extract artifacts
+                inputs:
+                  archiveFilePatterns: $(PIPELINE.WORKSPACE)/build_pipeline/multichoice-artifact/$(resources.pipeline.build_pipeline.runID).zip
+                  destinationFolder: $(Build.SourcesDirectory)
+                  cleanDestinationFolder: true
+              - task: DownloadSecureFile@1
+                inputs:
+                  secureFile: "backend-dev.env"
+                displayName: download .env file from library
+              - script: |
+                  mv $(Agent.TempDirectory)/backend-dev.env $(Build.SourcesDirectory)/pipeline-publish/appcode/backend/.env
+                displayName: move .env file to directory that are zip and publish
+              - task: ArchiveFiles@2
+                inputs:
+                  rootFolderOrFile: "$(Build.SourcesDirectory)/pipeline-publish/appcode"
+                  includeRootFolder: false
+                  archiveType: "zip"
+                  archiveFile: $(Build.SourcesDirectory)/build.zip
+                  replaceExistingArchive: true
+                displayName: "Archiving the source code as zip"
+              - task: CopyFilesOverSSH@0
+                inputs:
+                  sshEndpoint: "multichoice-ssh-dev"
+                  sourceFolder: $(Build.SourcesDirectory)
+                  contents: build.zip
+                  targetFolder: /tmp
+                  overwrite: true
+                displayName: "Copy files to AWS instance using ssh"
+              - task: SSH@0
+                displayName: "Application Deployment using ssh"
+                timeoutInMinutes: 12
+                inputs:
+                  sshEndpoint: "multichoice-ssh-dev"
+                  readyTimeout: "60000" 
+                  failOnStdErr: false
+                  runOptions: inline
+                  inline: |
+                    set -e
+                    sudo pm2 delete multichoice-backend 2>/dev/null || true
+                    sudo pm2 delete multichoice-frontend 2>/dev/null || true
+                    cd /home/ec2-user
+                    sudo zip -r MultiChoice-bkp.zip MultiChoice
+                    sudo rm -rf MultiChoice
+                    mkdir MultiChoice
+                    sudo cp /tmp/build.zip /home/ec2-user/MultiChoice
+
+                    # extract code
+                    cd MultiChoice
+                    sudo unzip -o build.zip
+
+                    # build backend
+                    cd backend
+                    export HUSKY=0
+                    sudo rm -rf package-lock.json node_modules
+                    sudo npm i
+                    sudo npx prisma migrate deploy
+                    sudo npx prisma generate
+                    sudo npm run build
+                    sudo pm2 start "npm run start" --name multichoice-backend
+
+                    # Build frontend
+                    cd ../frontend
+                    export HUSKY=0
+                    sudo rm -rf package-lock.json node_modules
+                    sudo npm i
+                    sudo npm run build:dev
+                    sudo pm2 start "npm run preview:dev" --name multichoice-frontend
+                    sudo systemctl restart nginx
+                    sudo pm2 save
