@@ -1,20 +1,28 @@
 import { PrismaService } from '@/prisma/prisma.service';
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, Product } from '@prisma/client';
 
 @Injectable()
-export class productRepository {
+export class ProductRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async findByNameAndTenantId(name: string, tenantId: string) {
-    return this.prisma.product.findFirst({
+    const product = await this.prisma.product.findFirst({
+      where: { name, tenantId, isArchived: false },
+    });
+
+    if (product) {
+      return product;
+    }
+
+    return this.prisma.productBundle.findFirst({
       where: { name, tenantId, isArchived: false },
     });
   }
 
-  async findBySkuAndTenantId(sku: string, tenantId: string) {
+  async findByProductCodeAndTenantId(productCode: string, tenantId: string) {
     return this.prisma.product.findFirst({
-      where: { sku, tenantId, isArchived: false },
+      where: { productCode, tenantId, isArchived: false },
     });
   }
 
@@ -33,9 +41,13 @@ export class productRepository {
     });
   }
 
-  async createProduct(data: Prisma.ProductCreateInput) {
+  async createProduct(
+    data: Prisma.ProductCreateInput,
+    include?: Prisma.ProductInclude,
+  ) {
     return this.prisma.product.create({
       data,
+      include,
     });
   }
 
@@ -50,15 +62,21 @@ export class productRepository {
     });
   }
 
-  async countProducts() {
+  async countProducts(where: Prisma.ProductWhereInput) {
     return this.prisma.product.count({
-      where: { isArchived: false },
+      where,
     });
   }
 
-  async getPaginatedProducts(skip: number, take: number) {
+  async getPaginatedProducts(
+    skip: number,
+    take: number,
+    where: Prisma.ProductWhereInput,
+    sortField: string,
+    order: string,
+  ) {
     return this.prisma.product.findMany({
-      where: { isArchived: false },
+      where,
       include: {
         bundlesAsParent: {
           where: { isArchived: false },
@@ -71,7 +89,7 @@ export class productRepository {
       },
       skip,
       take,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { [sortField]: order },
     });
   }
 
@@ -95,6 +113,12 @@ export class productRepository {
     });
   }
 
+  async findManyProductBundles(where: Prisma.ProductBundleWhereInput) {
+    return this.prisma.productBundle.findMany({
+      where,
+    });
+  }
+
   async findBundleByIdandTenantId(id: string, tenantId: string) {
     const bundle = await this.prisma.productBundle.findFirst({
       where: {
@@ -111,6 +135,12 @@ export class productRepository {
     if (!bundle) return null;
     const { items, ...bundleData } = bundle;
     return { ...bundleData, bundleItems: items };
+  }
+
+  async deleteProductBundlesByProductId(productId: string) {
+    return this.prisma.productBundle.deleteMany({
+      where: { parentProductId: productId },
+    });
   }
 
   async archiveProductBundlesByProductId(
@@ -134,10 +164,6 @@ export class productRepository {
         throw new BadRequestException(
           'Cannot update product from bundle to non-bundle while it still has active bundle items.',
         );
-      } else if (operation === 'delete') {
-        throw new BadRequestException(
-          'Cannot delete product with active bundle items..',
-        );
       }
     }
 
@@ -156,6 +182,14 @@ export class productRepository {
       data: {
         isArchived: true,
         archivedAt: new Date(),
+      },
+    });
+  }
+
+  async findById(id: string): Promise<Product | null> {
+    return this.prisma.product.findFirst({
+      where: {
+        id,
       },
     });
   }

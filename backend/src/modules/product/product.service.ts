@@ -1,34 +1,36 @@
-import { PrismaService } from '@/prisma/prisma.service';
 import {
   ConflictException,
   Injectable,
   NotFoundException,
-  InternalServerErrorException,
-  BadRequestException,
   Inject,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
-import { productRepository } from '@/infrastructure/repositories/product.repository';
+import { ProductRepository } from '@/infrastructure/repositories/product.repository';
 import { ResponseBuilder } from '@/utils/response.builder';
-import { RequestWithUser, IUserTokenPayload } from '~/interface';
+import { AuthenticatedRequest } from '~/interface';
 import type { Response } from '@/utils/response.builder';
 import { createProductBundleDto } from './dto/productBundle.dto';
 import * as winston from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Prisma, ProductType, Product, ProductBundle } from '@prisma/client';
+import { AllowedProductSortFields } from '@/config/constants/product.constants';
+import { ASC, CREATED_AT, DESC } from '@/config/constants';
+import { handleError } from '@/utils';
+import { AuditLogService } from '@/audit/audit-log.service';
+import { PrismaService } from '@/prisma/prisma.service';
 
 @Injectable()
 export class ProductService {
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly jwtservice: JwtService,
-    private readonly productRepository: productRepository,
+    private readonly productRepository: ProductRepository,
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: winston.Logger,
+    private readonly auditLogService: AuditLogService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async createProduct(
     dto: CreateProductDto,
-    request: RequestWithUser,
+    request: AuthenticatedRequest,
   ): Promise<Response> {
     const { user } = request;
     try {
@@ -44,73 +46,72 @@ export class ProductService {
         throw new ConflictException('Product name already exists');
       }
 
-      if (dto.sku) {
-        const existingBySku = await this.productRepository.findBySkuAndTenantId(
-          dto.sku,
-          user.tenantId,
-        );
-        if (existingBySku) {
+      if (dto.productCode) {
+        const existingByProductCode =
+          await this.productRepository.findByProductCodeAndTenantId(
+            dto.productCode,
+            user.tenantId,
+          );
+        if (existingByProductCode) {
           this.logger.error(
-            `Product creation failed: SKU conflict for ${user.email} with SKU ${dto.sku}`,
+            `Product creation failed: ProductCode conflict for ${user.email} with ProductCode ${dto.productCode}`,
           );
           throw new ConflictException('Product Code already exists');
         }
       }
-
-      const product = await this.productRepository.createProduct({
-        ...dto,
-        tenant: {
-          connect: {
-            id: user.tenantId,
-          },
-        },
-      });
-      this.logger.info(
-        `Product created successfully: ${product.id} by ${user.email}`,
-      );
-
-      let bundleData = {};
-      if (dto.isBundle) {
-        const bundle = await this.productRepository.createProductBundle({
-          parent: {
-            connect: {
-              id: product.id,
-            },
-          },
+      const product = await this.productRepository.createProduct(
+        {
+          ...dto,
           tenant: {
             connect: {
               id: user.tenantId,
             },
           },
-          name: dto.name,
-          description: dto.description,
-        });
-        bundleData = bundle;
-        this.logger.info(
-          `Product bundle created successfully for product: ${product.id} by ${user.email}`,
-        );
-      }
+          ...(dto.isBundle
+            ? {
+                bundlesAsParent: {
+                  create: {
+                    tenant: {
+                      connect: { id: user.tenantId },
+                    },
+                    name: dto.name,
+                    description: dto.description,
+                  },
+                },
+              }
+            : {}),
+        },
+        {
+          bundlesAsParent: {
+            where: { isArchived: false },
+            include: {
+              items: { where: { isArchived: false } },
+            },
+          },
+        },
+      );
+      this.logger.info(
+        `Product created successfully: ${product.id} by ${user.email}`,
+      );
 
       return new ResponseBuilder()
         .withStatusCode(201)
         .withMessage('Product created successfully')
-        .withData({ product, ...(bundleData ? { bundle: bundleData } : {}) })
+        .withData(product)
         .build();
-    } catch (error) {
-      if (error instanceof ConflictException) {
-        throw error;
-      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
       this.logger.error(
-        `Product creation failed for ${user.email}: ${error.message}`,
+        `Product creation failed for ${user.email}: ${message}`,
       );
-      throw new InternalServerErrorException('Failed to create product');
+      handleError(error, 'Failed to create product');
     }
   }
 
   async makeBundle(
     id: string,
     dto: createProductBundleDto,
-    request: RequestWithUser,
+    request: AuthenticatedRequest,
   ): Promise<Response> {
     const { user } = request;
     try {
@@ -160,31 +161,59 @@ export class ProductService {
         .withMessage('Product converted to bundle successfully')
         .withData({ product: bundleProduct, bundle: productBundle })
         .build();
-    } catch (error) {
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ConflictException
-      ) {
-        throw error;
-      }
-      this.logger.error(
-        `makeBundle error for user ${user.email}: ${error.message}`,
-      );
-      throw new InternalServerErrorException(
-        'Failed to convert product to bundle',
-      );
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`makeBundle error for user ${user.email}: ${message}`);
+      handleError(error, 'Failed to convert product to bundle');
     }
   }
 
-  async getList(page?: number, limit?: number): Promise<Response> {
+  async getList(
+    page?: number,
+    limit?: number,
+    sortByField?: string,
+    search?: string,
+    isArchived: boolean = false,
+    type?: string,
+    fromDate?: Date,
+    toDate?: Date,
+    sortOrder?: string,
+  ): Promise<Response> {
     try {
       const pageNumber = Math.max(Number(page) || 1, 1);
       const pageSize = Math.max(Number(limit) || 10, 1);
       const skip = (pageNumber - 1) * pageSize;
+      const cleanSearch = typeof search === 'string' ? search.trim() : search;
+      const cleanType = typeof type === 'string' ? type.trim() : type;
+      const cleanSortByField =
+        typeof sortByField === 'string' ? sortByField.trim() : sortByField;
+      const cleanSortOrder =
+        typeof sortOrder === 'string' ? sortOrder.trim() : sortOrder;
 
+      const sortField =
+        AllowedProductSortFields.find(
+          (f) => f.toLowerCase() === cleanSortByField?.toLowerCase(),
+        ) || CREATED_AT;
+      const order = cleanSortOrder?.toLowerCase() === ASC ? ASC : DESC;
+      const whereCondition = this.buildWhereAndFilterClauses(
+        cleanSearch,
+        cleanType,
+        fromDate,
+        toDate,
+      );
+      const where = {
+        isArchived,
+        ...whereCondition,
+      };
       const [totalCount, products] = await Promise.all([
-        this.productRepository.countProducts(),
-        this.productRepository.getPaginatedProducts(skip, pageSize),
+        this.productRepository.countProducts(where),
+        this.productRepository.getPaginatedProducts(
+          skip,
+          pageSize,
+          where,
+          sortField,
+          order,
+        ),
       ]);
       this.logger.info(
         `Products list retrieved: page ${pageNumber}, limit ${pageSize}`,
@@ -200,15 +229,16 @@ export class ProductService {
           data: products,
         })
         .build();
-    } catch (error) {
-      this.logger.error(`getList error: ${error.message}`);
-      throw new InternalServerErrorException('Failed to retrieve products');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`getList error: ${message}`);
+      handleError(error, 'Failed to retrieve products');
     }
   }
 
   async getProductById(
     id: string,
-    request: RequestWithUser,
+    request: AuthenticatedRequest,
   ): Promise<Response> {
     const { user } = request;
     try {
@@ -230,18 +260,19 @@ export class ProductService {
         .withMessage('Product retrieved successfully')
         .withData(product)
         .build();
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
       this.logger.error(
-        `getProductById error for user ${user.email}: ${error.message}`,
+        `getProductById error for user ${user.email}: ${message}`,
       );
-      throw new InternalServerErrorException('Failed to retrieve product');
+      handleError(error, 'Failed to retrieve product');
     }
   }
 
-  async deleteProduct(id: string, request: RequestWithUser): Promise<Response> {
+  async deleteProduct(
+    id: string,
+    request: AuthenticatedRequest,
+  ): Promise<Response> {
     const { user } = request;
     try {
       const product = await this.productRepository.findByIdandTenantId(
@@ -256,6 +287,21 @@ export class ProductService {
       }
 
       if (product.isBundle) {
+        const bundlesToArchive =
+          await this.productRepository.findManyProductBundles({
+            parent: { id: id },
+            isArchived: false,
+          });
+        for (const bundle of bundlesToArchive) {
+          await this.auditLogService.log({
+            entity: 'ProductBundle',
+            entityId: bundle.id,
+            action: 'DELETED',
+            before: bundle,
+            after: null,
+            req: request,
+          });
+        }
         await this.productRepository.archiveProductBundlesByProductId(
           id,
           { isArchived: true },
@@ -270,23 +316,22 @@ export class ProductService {
       this.logger.info(`Product deleted successfully: ${id} by ${user.email}`);
 
       return new ResponseBuilder()
+        .withStatusCode(204)
         .withMessage('Product deleted successfully')
         .build();
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
       this.logger.error(
-        `deleteProduct error for user ${user.email}: ${error.message}`,
+        `deleteProduct error for user ${user.email}: ${message}`,
       );
-      throw new InternalServerErrorException('Failed to delete product');
+      handleError(error, 'Failed to delete product');
     }
   }
 
   async updateProduct(
     id: string,
     dto: UpdateProductDto,
-    request: RequestWithUser,
+    request: AuthenticatedRequest,
   ): Promise<Response> {
     const { user } = request;
     try {
@@ -314,14 +359,15 @@ export class ProductService {
         }
       }
 
-      if (dto.sku && dto.sku !== product.sku) {
-        const skuConflict = await this.productRepository.findBySkuAndTenantId(
-          dto.sku,
-          user.tenantId,
-        );
-        if (skuConflict && skuConflict.id !== id) {
+      if (dto.productCode && dto.productCode !== product.productCode) {
+        const ProductCodeConflict =
+          await this.productRepository.findByProductCodeAndTenantId(
+            dto.productCode,
+            user.tenantId,
+          );
+        if (ProductCodeConflict && ProductCodeConflict.id !== id) {
           this.logger.error(
-            `updateProduct failed: SKU conflict for product id ${id} with SKU ${dto.sku} by user ${user.email}`,
+            `updateProduct failed: ProductCode conflict for product id ${id} with ProductCode ${dto.productCode} by user ${user.email}`,
           );
           throw new ConflictException('Product code already exists');
         }
@@ -331,6 +377,11 @@ export class ProductService {
       const isUpdatedToBundle = dto.isBundle ?? product.isBundle;
 
       if (isCurrentlyBundle && !isUpdatedToBundle) {
+        const bundlesToArchive =
+          await this.productRepository.findManyProductBundles({
+            parent: { id: id },
+            isArchived: false,
+          });
         await this.productRepository.archiveProductBundlesByProductId(
           id,
           { isArchived: true },
@@ -339,10 +390,20 @@ export class ProductService {
         this.logger.info(
           `Archived bundles for product id: ${id} during update by ${user.email}`,
         );
+        for (const bundle of bundlesToArchive) {
+          await this.auditLogService.log({
+            entity: 'ProductBundle',
+            entityId: bundle.id,
+            action: 'DELETED',
+            before: bundle,
+            after: null,
+            req: request,
+          });
+        }
       }
 
       if (!isCurrentlyBundle && isUpdatedToBundle) {
-        await this.productRepository.createProductBundle({
+        const productBundle = await this.productRepository.createProductBundle({
           tenant: {
             connect: {
               id: user.tenantId,
@@ -353,12 +414,19 @@ export class ProductService {
               id: id,
             },
           },
-          name: dto.name!,
+          name: dto.name || product.name,
           description: dto.description,
         });
         this.logger.info(
           `Created bundle for product id: ${id} during update by ${user.email}`,
         );
+        await this.auditLogService.log({
+          entity: 'ProductBundle',
+          entityId: productBundle.id,
+          action: 'CREATED',
+          after: productBundle,
+          req: request,
+        });
       }
 
       const updatedProduct = await this.productRepository.updateProduct(
@@ -371,17 +439,13 @@ export class ProductService {
         .withMessage('Product updated successfully')
         .withData(updatedProduct)
         .build();
-    } catch (error) {
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ConflictException
-      ) {
-        throw error;
-      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+
       this.logger.error(
-        `updateProduct error for user ${user.email}: ${error.message}`,
+        `updateProduct error for user ${user.email}: ${message}`,
       );
-      throw new InternalServerErrorException('Failed to update product');
+      handleError(error, 'Failed to update product');
     }
   }
 
@@ -409,13 +473,18 @@ export class ProductService {
           data: bundles,
         })
         .build();
-    } catch (error) {
-      this.logger.error(`getBundles error: ${error.message}`);
-      throw new InternalServerErrorException('Failed to retrieve bundles');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+
+      this.logger.error(`getBundles error: ${message}`);
+      handleError(error, 'Failed to retrieve bundles');
     }
   }
 
-  async getBundleById(id: string, request: RequestWithUser): Promise<Response> {
+  async getBundleById(
+    id: string,
+    request: AuthenticatedRequest,
+  ): Promise<Response> {
     const { user } = request;
     try {
       const bundle = await this.productRepository.findBundleByIdandTenantId(
@@ -434,14 +503,93 @@ export class ProductService {
         .withMessage('Bundle retrieved successfully')
         .withData(bundle)
         .build();
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
       this.logger.error(
-        `getBundleById error for user ${user.email}: ${error.message}`,
+        `getBundleById error for user ${user.email}: ${message}`,
       );
-      throw new InternalServerErrorException('Failed to retrieve bundle');
+      handleError(error, 'Failed to retrieve bundle');
     }
+  }
+  private buildWhereAndFilterClauses(
+    cleanSearch?: string,
+    cleanType?: string,
+    cleanFromDate?: Date,
+    cleanToDate?: Date,
+  ): Prisma.ProductWhereInput {
+    const isNumericSearch = !Number.isNaN(Number(cleanSearch));
+    const searchCondition: Prisma.ProductWhereInput = cleanSearch
+      ? {
+          OR: [
+            {
+              name: {
+                contains: cleanSearch,
+                mode: Prisma.QueryMode.insensitive,
+              },
+            },
+            {
+              productCode: {
+                contains: cleanSearch,
+                mode: Prisma.QueryMode.insensitive,
+              },
+            },
+            {
+              description: {
+                contains: cleanSearch,
+                mode: Prisma.QueryMode.insensitive,
+              },
+            },
+            {
+              family: {
+                contains: cleanSearch,
+                mode: Prisma.QueryMode.insensitive,
+              },
+            },
+            {
+              currencyCode: {
+                contains: cleanSearch,
+                mode: Prisma.QueryMode.insensitive,
+              },
+            },
+            // ...(isNumericSearch
+            //   ? [{ unitPrice: { equals: new Prisma.Decimal(cleanSearch) } }]
+            //   : []),
+          ],
+        }
+      : {};
+    const typeValues = cleanType
+      ? cleanType
+          .split(',')
+          .map((v) => v.trim().toLowerCase())
+          .filter((v) => v.length > 0)
+      : [];
+    const matchedTypes = Object.values(ProductType).filter((type) =>
+      typeValues.includes(type.toLowerCase()),
+    );
+    const typeFilter =
+      matchedTypes.length > 0 ? { in: matchedTypes } : undefined;
+
+    const filters: Prisma.ProductWhereInput = {
+      ...(typeFilter && { type: typeFilter }),
+      ...(cleanFromDate && {
+        createdAt: { gte: new Date(cleanFromDate) },
+      }),
+      ...(cleanToDate && {
+        createdAt: {
+          ...(cleanFromDate ? { gte: cleanFromDate } : {}),
+          lte: new Date(
+            cleanToDate.setDate(new Date(cleanToDate).getDate() + 1),
+          ),
+        },
+      }),
+    };
+
+    return {
+      AND: [searchCondition, filters],
+    };
+  }
+
+  async findOne(id: string): Promise<Product | ProductBundle | null> {
+    return await this.productRepository.findById(id);
   }
 }

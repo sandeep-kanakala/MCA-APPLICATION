@@ -1,24 +1,11 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { PrismaService } from '@/prisma/prisma.service';
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  InternalServerErrorException,
-  NotFoundException,
-} from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { handleError } from '@/utils';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Subject } from '@prisma/client';
 
 @Injectable()
 export class PermissionsService {
-  constructor(
-    private readonly prismaService: PrismaService,
-    private readonly jwtService: JwtService,
-  ) {}
+  constructor(private readonly prismaService: PrismaService) {}
 
   async assignPermissionsToRole(
     tenantId: string,
@@ -35,9 +22,7 @@ export class PermissionsService {
         },
       });
 
-      if (!role) {
-        throw new NotFoundException(`Role '${roleName}' not found`);
-      }
+      if (!role) throw new NotFoundException(`Role '${roleName}' not found`);
 
       const permissions = await this.prismaService.permission.findMany({
         where: {
@@ -46,9 +31,8 @@ export class PermissionsService {
         },
       });
 
-      if (permissions.length === 0) {
+      if (permissions.length === 0)
         throw new NotFoundException(`No matching permissions found`);
-      }
 
       const updatedRole = await this.prismaService.role.update({
         where: { id: role.id },
@@ -66,7 +50,7 @@ export class PermissionsService {
 
       return updatedRole;
     } catch (error) {
-      this.handleError(error, 'Failed to assign permissions to role');
+      handleError(error, 'Failed to assign permissions to role');
     }
   }
 
@@ -83,7 +67,7 @@ export class PermissionsService {
 
       return data;
     } catch (error) {
-      this.handleError(error, 'Failed to retrieve permissions by role');
+      handleError(error, 'Failed to retrieve permissions by role');
     }
   }
 
@@ -103,8 +87,7 @@ export class PermissionsService {
 
       return res;
     } catch (error) {
-      // console.log('error', error);
-      this.handleError(error, 'Failed to create default roles and permissions');
+      handleError(error, 'Failed to create default roles and permissions');
     }
   }
 
@@ -126,15 +109,7 @@ export class PermissionsService {
 
       return res;
     } catch (error) {
-      this.handleError(error, 'Failed to create permissions');
+      handleError(error, 'Failed to create permissions');
     }
-  }
-
-  private handleError(error: unknown, message: string): never {
-    if (error instanceof BadRequestException) throw error;
-    if (error instanceof ConflictException) throw error;
-    if (error instanceof NotFoundException) throw error;
-
-    throw new InternalServerErrorException('Internal server error.');
   }
 }

@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PERMISSIONS_KEY } from './permissions.decorator';
+import { IUserToken } from '~/interface';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -17,20 +18,14 @@ export class PermissionsGuard implements CanActivate {
       [context.getHandler(), context.getClass()],
     );
 
-    // console.log('Required Permissions:', requiredPermissions);
-
     // If no specific permissions are required, allow access
     if (!requiredPermissions || requiredPermissions.length === 0) {
       return true;
     }
 
-    const { user } = context.switchToHttp().getRequest();
+    const { user }: { user: IUserToken } = context.switchToHttp().getRequest();
 
-    // console.log('User in PermissionsGuard:', user);
-
-    if (!user) {
-      throw new ForbiddenException('User not found');
-    }
+    if (!user) throw new ForbiddenException('User not found');
 
     // Collect all permissions across all roles
     const userPermissions: string[] = [];
@@ -39,23 +34,19 @@ export class PermissionsGuard implements CanActivate {
       for (const role of user.roles) {
         if (role.permissions && Array.isArray(role.permissions)) {
           for (const perm of role.permissions) {
-            userPermissions.push(perm.name || perm);
+            userPermissions.push(perm.name);
           }
         }
       }
     }
-
-    // console.log('User Permissions:', userPermissions);
-    // console.log('Required Permissions:', requiredPermissions);
 
     // Check if the user has all required permissions
     const hasPermission = requiredPermissions.every((permission) =>
       userPermissions.includes(permission),
     );
 
-    if (!hasPermission) {
+    if (!hasPermission)
       throw new ForbiddenException(`Missing required permissions`);
-    }
 
     return true;
   }

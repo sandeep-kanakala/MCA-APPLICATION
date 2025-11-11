@@ -1,6 +1,6 @@
 import { PrismaService } from '@/prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, ProductBundleItem } from '@prisma/client';
 
 @Injectable()
 export class BundleItemRepository {
@@ -44,5 +44,9 @@ export class BundleItemRepository {
       where: { id },
       data,
     });
+  }
+
+  async findById(id: string): Promise<ProductBundleItem | null> {
+    return this.prisma.productBundleItem.findFirst({ where: { id } });
   }
 }

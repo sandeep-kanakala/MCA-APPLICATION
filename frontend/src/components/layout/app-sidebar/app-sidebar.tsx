@@ -1,5 +1,3 @@
-'use client';
-
 import * as React from 'react';
 import {
   Briefcase,
@@ -8,6 +6,9 @@ import {
   ShoppingBag,
   ShoppingCart,
   Users,
+  CalendarDays,
+  List,
+  Book,
 } from 'lucide-react';
 
 import { NavSecondary } from '@/components/sideBar/nav-secondary';
@@ -37,22 +38,35 @@ const appsMenuItems = {
       url: 'apps/sales/accounts',
       icon: Briefcase,
     },
-
     {
-      title: 'Orders',
-      url: '#',
-      icon: ShoppingCart,
+      title: 'Contacts',
+      url: 'apps/sales/contacts',
+      icon: Users,
     },
     {
       title: 'Products',
-      url: '#',
+      url: 'apps/sales/products',
       icon: ShoppingBag,
     },
-
     {
-      title: 'Contacts',
-      url: '#',
-      icon: Users,
+      title: 'Price Books',
+      url: 'apps/sales/pricebooks',
+      icon: Book,
+    },
+    {
+      title: 'Price list',
+      url: 'apps/sales/pricelist',
+      icon: List,
+    },
+    {
+      title: 'Orders',
+      url: 'apps/sales/orders',
+      icon: ShoppingCart,
+    },
+    {
+      title: 'Events',
+      url: 'apps/sales/events',
+      icon: CalendarDays,
     },
   ],
   navSecondary: [
@@ -80,22 +94,19 @@ export default function AppSidebar({ ...props }: React.ComponentProps<typeof Sid
 
   const isActive = (path: string) => currentPath.includes(path);
   return (
-    <Sidebar variant="inset" {...props}>
+    <Sidebar collapsible="icon" variant="inset" {...props}>
       <SidebarHeader>
         <SidebarMenu>
-          <SidebarMenuItem>
+          <SidebarMenuItem className="mx-auto">
             <SidebarMenuButton size="lg" asChild>
               <Link to="/apps">
                 <img
-                  width={'80px'}
+                  width={'70'}
                   alt="logo"
                   className=""
-                  height={'80px'}
-                  src="/public/assets/logo-white.png"
+                  height={'77'}
+                  src="/assets/logo-white.svg"
                 />
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">Multichoice</span>
-                </div>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -104,31 +115,27 @@ export default function AppSidebar({ ...props }: React.ComponentProps<typeof Sid
       <SidebarContent>
         <SidebarGroupContent>
           <SidebarMenu className="cursor-pointer ">
-            {currentNav?.items?.map((item: any) => {
-              return (
-                <>
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      className={`
+            {currentNav?.items?.map((item: any) => (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton
+                  asChild
+                  className={`
           ${isActive(item?.url) ? 'bg-[#D4E2FD] text-[#274AFF] border-l-4 border-[#274AFF]' : 'text-gray-700'}
           hover:bg-[#D4E2FD] hover:text-[#274AFF] hover:border-l-4 hover:border-[#274AFF]
           transition-colors duration-200 rounded-none
         `}
-                    >
-                      <Link
-                        to={item.url}
-                        className="flex items-center gap-2  text-gray-700
+                >
+                  <Link
+                    to={item.url}
+                    className="flex items-center gap-2  text-gray-700
                   transition-colors duration-200"
-                      >
-                        <item.icon />
-                        <span className="">{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </>
-              );
-            })}
+                  >
+                    <item.icon />
+                    <span className="">{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
           </SidebarMenu>
         </SidebarGroupContent>
         <NavSecondary items={currentNav.navSecondary} className="mt-auto" />

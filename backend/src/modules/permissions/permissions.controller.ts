@@ -11,21 +11,22 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { PermissionsService } from './permissions.service';
-import {
-  ApiBearerAuth,
-  ApiBody,
-  ApiOperation,
-  ApiTags,
-  ApiResponse,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { ResponseBuilder, type Response } from '@/utils';
 import { Roles } from '@/modules/auth/decorators/roles.decorator';
 import { RolesGuard } from '@/modules/auth/guards/roles.guard';
-import { ApiCommonResponses } from '@/common';
 import { Subject } from '@prisma/client';
 import { ADMIN, SUPER_ADMIN } from '@/config/constants';
 import { LoadEntityInterceptor } from '@/audit/interceptor/load-entity.interceptor';
+import {
+  ApiMethodDescription,
+  AssignPermissionsToRoleApiBody,
+  AssignPermissionsToRoleApiResponses,
+  CreatePermissionsApiBody,
+  CreateRoleApiBody,
+} from '@/common/responses';
+import { AuditEntity } from '@/audit/decorators/audit-log.decorator';
 
 @ApiTags('Permissions')
 @Controller('/permissions')
@@ -33,38 +34,15 @@ import { LoadEntityInterceptor } from '@/audit/interceptor/load-entity.intercept
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 @Roles(SUPER_ADMIN, ADMIN)
-@ApiCommonResponses()
+@AuditEntity('Permission')
 export class PermissionsController {
   constructor(private readonly permissionsService: PermissionsService) {}
 
-  @Roles('SUPER_ADMIN', 'ADMIN')
-  @Patch('/assign/:roleName')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Assign Permissions to Role',
-    description: 'Assign one or more permissions to a given role',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Permissions updated successfully.',
-  })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        permissions: {
-          type: 'array',
-          items: { type: 'string' },
-          example: [
-            'can_create_user',
-            'can_read_user',
-            'can_update_user',
-            'can_delete_user',
-          ],
-        },
-      },
-    },
-  })
+  @Patch('/assign/:roleName')
+  @ApiMethodDescription('Assign Permissions to Role')
+  @AssignPermissionsToRoleApiBody()
+  @AssignPermissionsToRoleApiResponses()
   async assignPermissionsToRole(
     @Param('roleName') roleName: string,
     @Body()
@@ -85,13 +63,12 @@ export class PermissionsController {
       .build();
   }
 
-  @Roles('SUPER_ADMIN', 'ADMIN')
-  @Get('/role/:roleName')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Get Permissions by Role',
-    description: 'Retrieve all permissions assigned to a specific role',
-  })
+  @Get('/:roleName')
+  @ApiMethodDescription(
+    'Get Permissions by Role',
+    'Retrieve all permissions assigned to a specific role',
+  )
   async getPermissionsByRole(
     @Param('roleName') roleName: string,
   ): Promise<Response> {
@@ -102,27 +79,10 @@ export class PermissionsController {
       .build();
   }
 
-  @Roles('SUPER_ADMIN', 'ADMIN')
-  @Post('/create-role')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Create Roles',
-  })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        role: { type: 'string', example: 'ADMIN' },
-      },
-    },
-    examples: {
-      example1: {
-        summary: 'Create Roles',
-        description: 'Create default roles for the tenant',
-        value: { role: 'ADMIN' },
-      },
-    },
-  })
+  @Post('/create-role')
+  @ApiMethodDescription('Create Roles')
+  @CreateRoleApiBody()
   async createRole(@Body() body: { role: string }): Promise<Response> {
     const result = await this.permissionsService.createRoles(body?.role);
     return new ResponseBuilder()
@@ -131,31 +91,10 @@ export class PermissionsController {
       .build();
   }
 
-  @Roles('SUPER_ADMIN', 'ADMIN')
-  @Post('/create-permissions')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Create Permissions',
-    description: 'Create permissions for a tenant',
-  })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        permissions: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              name: { type: 'string', example: 'can_create_user' },
-              subject: { type: 'string', example: 'User' },
-            },
-          },
-          example: [{ name: 'can_read_user', subject: 'User' }],
-        },
-      },
-    },
-  })
+  @Post('/create-permissions')
+  @ApiMethodDescription('Create Permissions', 'Create permissions for a tenant')
+  @CreatePermissionsApiBody()
   async createPermissions(
     @Body() body: { permissions: { name: string; subject: Subject }[] },
   ): Promise<Response> {

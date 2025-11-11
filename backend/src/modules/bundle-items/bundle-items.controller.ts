@@ -9,12 +9,12 @@ import {
   Patch,
   Delete,
   UseInterceptors,
+  Get,
+  Request,
 } from '@nestjs/common';
 import { BundleItemsService } from './bundle-items.service';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { AuditEntity } from '@/audit/decorators/audit-log.decorator';
 import { AuthGuard } from '@nestjs/passport';
-import { Request } from '@nestjs/common';
 import {
   CreateBundleItemDto,
   UpdateBundleItemDto,
@@ -22,18 +22,31 @@ import {
 import type { RequestWithUser } from '~/interface';
 import type { Response } from '@/utils/response.builder';
 import { LoadEntityInterceptor } from '@/audit/interceptor/load-entity.interceptor';
+import { ApiMethodDescription } from '@/common/responses';
+import {
+  DeleteBundleItemApiResponses,
+  GetBundleItemApiResponses,
+  PatchBundleItemApiBody,
+  PatchBundleItemApiResponses,
+  PostBundleItemApiBody,
+  PostBundleItemApiResponses,
+} from '@/common/responses/bundle-items.api-docs';
+import { AuditEntity } from '@/audit/decorators/audit-log.decorator';
 
 @Controller('/bundle-items')
 @UseInterceptors(LoadEntityInterceptor)
 @ApiBearerAuth('access-token')
 @ApiTags('Bundle Items')
-@AuditEntity('BundleItem')
 @UseGuards(AuthGuard('jwt'))
+@AuditEntity('ProductBundleItem')
 export class BundleItemsController {
   constructor(private readonly bundleItemsService: BundleItemsService) {}
 
   @HttpCode(HttpStatus.CREATED)
   @Post('/:bundleId')
+  @ApiMethodDescription(' Creates new bundle item')
+  @PostBundleItemApiResponses()
+  @PostBundleItemApiBody()
   async createBundleItem(
     @Param('bundleId') bundleId: string,
     @Body() dto: CreateBundleItemDto,
@@ -43,22 +56,37 @@ export class BundleItemsController {
   }
 
   @HttpCode(HttpStatus.OK)
-  @Patch('/:id')
+  @Patch('/:bundleItemId')
+  @ApiMethodDescription('Update bundle item by ID')
+  @PatchBundleItemApiResponses()
+  @PatchBundleItemApiBody()
   public async updateBundleItem(
-    @Param('id') id: string,
+    @Param('bundleItemId') bundleItemId: string,
     @Body() dto: UpdateBundleItemDto,
     @Request() request: RequestWithUser,
   ): Promise<Response> {
-    return this.bundleItemsService.updateBundleItem(id, dto, request);
+    return this.bundleItemsService.updateBundleItem(bundleItemId, dto, request);
   }
 
   @HttpCode(HttpStatus.OK)
-  @Delete('/:id')
-  public async DeleteBundleItem(
-    @Param('id') id: string,
-    @Body() dto: UpdateBundleItemDto,
+  @Get('/:bundleItemId')
+  @ApiMethodDescription('Get bundle item by ID')
+  @GetBundleItemApiResponses()
+  public async getBundleItem(
+    @Param('bundleItemId') bundleItemId: string,
     @Request() request: RequestWithUser,
   ): Promise<Response> {
-    return this.bundleItemsService.DeleteBundleItem(id, dto, request);
+    return this.bundleItemsService.getBundleItem(bundleItemId, request);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Delete('/:bundleItemId')
+  @ApiMethodDescription('Delete bundle item by ID')
+  @DeleteBundleItemApiResponses()
+  public async DeleteBundleItem(
+    @Param('bundleItemId') bundleItemId: string,
+    @Request() request: RequestWithUser,
+  ): Promise<Response> {
+    return this.bundleItemsService.DeleteBundleItem(bundleItemId, request);
   }
 }

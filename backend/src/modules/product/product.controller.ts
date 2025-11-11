@@ -15,106 +15,134 @@ import {
 } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
-import { AccessToken } from '@/utils/helper';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiQuery,
-  ApiTags,
-} from '@nestjs/swagger';
-import { AuditEntity } from '@/audit/decorators/audit-log.decorator';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
-import type { RequestWithUser } from '~/interface';
+import type { AuthenticatedRequest } from '~/interface';
 import type { Response } from '@/utils/response.builder';
 import { createProductBundleDto } from './dto/productBundle.dto';
 import { LoadEntityInterceptor } from '@/audit/interceptor/load-entity.interceptor';
+import {
+  ApiMethodDescription,
+  DeleteProductApiResponses,
+  GetProductApiResponses,
+  GetProductByIdApiResponses,
+  PatchProductApiBody,
+  PatchProductApiResponses,
+  PostProductApiBody,
+  PostProductApiResponses,
+  PostProductBundleApiBody,
+  ProductApiQueries,
+  ProductBundleApiQueries,
+} from '@/common/responses';
+import { AuditEntity } from '@/audit/decorators/audit-log.decorator';
+import { BundlesQueryDto, ProductsQueryDto } from '@/common';
+import { toBoolean } from '@/utils';
 
-@Controller('product')
+@Controller('/products')
 @ApiBearerAuth('access-token')
 @UseInterceptors(LoadEntityInterceptor)
 @ApiTags('Products')
-@AuditEntity('Product')
 @UseGuards(AuthGuard('jwt'))
+@AuditEntity('Product')
 export class ProductController {
   constructor(private readonly productService: ProductService) {}
 
   @HttpCode(HttpStatus.CREATED)
-  @Post('/create')
+  @Post()
+  @ApiMethodDescription('create new product')
+  @PostProductApiResponses()
+  @PostProductApiBody()
   async createProduct(
     @Body() dto: CreateProductDto,
-    @Request() request: RequestWithUser,
+    @Request() request: AuthenticatedRequest,
   ): Promise<Response> {
     return this.productService.createProduct(dto, request);
   }
 
-  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
-  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
   @HttpCode(HttpStatus.OK)
-  @Get('/list')
-  public async getList(
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-  ): Promise<Response> {
-    return this.productService.getList(page, limit);
+  @Get()
+  @GetProductApiResponses()
+  @ApiMethodDescription('Get All Products')
+  @ProductApiQueries()
+  async getList(@Query() query: ProductsQueryDto): Promise<Response> {
+    return this.productService.getList(
+      query.page,
+      query.limit,
+      query.sortByField,
+      query.search,
+      toBoolean(query.isArchived),
+      query.type,
+      query.fromDate,
+      query.toDate,
+      query.sortOrder,
+    );
   }
 
-  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
-  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
   @HttpCode(HttpStatus.OK)
   @Get('/get-bundles')
-  public async getBundles(
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-  ): Promise<Response> {
-    return this.productService.getBundles(page, limit);
+  @ApiMethodDescription('Get All Bundles for Products')
+  @ProductBundleApiQueries()
+  async getBundles(@Query() query: BundlesQueryDto): Promise<Response> {
+    return this.productService.getBundles(query.page, query.limit);
   }
 
   @HttpCode(HttpStatus.OK)
-  @Get('/:id')
+  @Get('/:productId')
+  @ApiMethodDescription('Get product by ID')
+  @GetProductByIdApiResponses()
   async getProductById(
-    @Param('id') id: string,
-    @Request() request: RequestWithUser,
+    @Param('productId') productId: string,
+    @Request() request: AuthenticatedRequest,
   ): Promise<Response> {
-    return this.productService.getProductById(id, request);
+    return this.productService.getProductById(productId, request);
   }
 
   @HttpCode(HttpStatus.OK)
-  @Patch('/update/:id')
-  public async updateProduct(
-    @Param('id') id: string,
+  @Patch('/:productId')
+  @ApiMethodDescription('Update Product by ID')
+  @PatchProductApiResponses()
+  @PatchProductApiBody()
+  async updateProduct(
+    @Param('productId') productId: string,
     @Body() dto: UpdateProductDto,
-    @Request() request: RequestWithUser,
+    @Request() request: AuthenticatedRequest,
   ): Promise<Response> {
-    return this.productService.updateProduct(id, dto, request);
+    return this.productService.updateProduct(productId, dto, request);
   }
 
   @HttpCode(HttpStatus.OK)
-  @Delete('/delete/:id')
-  public async deleteProduct(
-    @Param('id') id: string,
-    @Body() dto: CreateProductDto,
-    @Request() request: RequestWithUser,
+  @Delete('/:productId')
+  @ApiMethodDescription('Delete Product by ID')
+  @DeleteProductApiResponses()
+  async deleteProduct(
+    @Param('productId') productId: string,
+    @Request() request: AuthenticatedRequest,
   ): Promise<Response> {
-    return this.productService.deleteProduct(id, request);
+    return this.productService.deleteProduct(productId, request);
   }
 
   @HttpCode(HttpStatus.OK)
-  @Patch(':id/make-bundle')
+  @Patch('/:productId/make-bundle')
+  @PatchProductApiResponses()
+  @ApiMethodDescription('Create Bundle for the Product')
+  @PostProductBundleApiBody()
+  @AuditEntity('ProductBundle')
   async makeBundle(
-    @Param('id') id: string,
+    @Param('productId') productId: string,
     @Body() dto: createProductBundleDto,
-    @Request() request: RequestWithUser,
+    @Request() request: AuthenticatedRequest,
   ): Promise<Response> {
-    return this.productService.makeBundle(id, dto, request);
+    return this.productService.makeBundle(productId, dto, request);
   }
 
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ description: 'Get Bundle by Id including Bundle Items' })
-  @Get('/bundle/:id')
+  @Get('bundle/:bundleId')
+  @ApiMethodDescription('Get Bundle by ID')
+  @GetProductApiResponses()
   async getBundleById(
-    @Param('id') id: string,
-    @Request() request: RequestWithUser,
+    @Param('bundleId') bundleId: string,
+    @Request() request: AuthenticatedRequest,
   ): Promise<Response> {
-    return this.productService.getBundleById(id, request);
+    return this.productService.getBundleById(bundleId, request);
   }
 }

@@ -9,11 +9,6 @@ datasource db {
 
 // --------------------------- Enums --------------------------
 
-enum UserStatus {
-  ACTIVE
-  INACTIVE
-}
-
 enum LeadStatus {
   OPEN
   WORKING
@@ -77,8 +72,7 @@ enum QuoteStatus {
 enum OrderStatus {
   DRAFT
   ACTIVATED
-  CANCELED
-  FULFILLED
+  CANCELLED
 }
 
 enum PriceBookType {
@@ -152,6 +146,61 @@ enum AmendmentType {
   RESUME
 }
 
+enum AccountType {
+  PARTNER
+  CUSTOMER
+}
+
+enum AddressType {
+  SHIPPING
+  BILLING
+}
+
+enum AccountStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  PENDING_CONTRACT_APPROVAL
+  ACTIVE
+  CLOSED
+  DORMANT
+  FORGET_ME
+  FRAUD
+  FRAUD_INVESTIGATION
+  PIRACY
+  PIRACY_INVESTIGATION
+  PROSPECT
+  SUSPENDED
+}
+
+enum ContactStatus {
+  ACTIVE
+  DECEASED
+  EMIGRATED
+  FORGET_ME
+  POTENTIAL
+  FRAUD_INVESTIGATION
+  FRAUD
+  CLOSED
+  SUSPENDED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum BillingModel {
+  POD
+  ARC
+}
+
+enum ProductStatus {
+  DRAFT
+  PENDING_APPROVAL
+  ACTIVE
+}
+
 enum Subject {
   Tenant
   Team
@@ -173,7 +222,6 @@ enum Subject {
   Quote
   QuoteLineItem
   Order
-  OrderAmendment
   OrderItem
   Campaign
   CampaignContactMember
@@ -188,18 +236,43 @@ enum Subject {
   Attachment
 }
 
+enum RecurringFrequency {
+  DAILY
+  MONTHLY
+  ONE_TIME
+  USAGE
+  WEEKLY
+  YEARLY
+}
+
+enum OrderItemAction {
+  Disconnect
+  Resume
+  Cancel
+}
+
+enum PricingMode {
+  INHERIT
+  OVERRIDE
+  INCLUDED
+}
+
 // --------------------- Core / System ------------------------
 
 model Tenant {
-  id         String    @id @default(cuid())
-  name       String    @unique
-  domain     String?   @unique
-  isActive   Boolean   @default(true)
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  isArchived Boolean   @default(false)
-  archivedAt DateTime?
+  id          String    @id @default(cuid())
+  name        String    @unique
+  domain      String?   @unique
+  isActive    Boolean   @default(true)
+  createdById String?
+  updatedById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
 
+  createdBy          User?               @relation("TenantCreatedBy", fields: [createdById], references: [id])
+  updatedBy          User?               @relation("TenantUpdatedBy", fields: [updatedById], references: [id])
   users              User[]
   // roles              Role[]
   teams              Team[]
@@ -209,6 +282,7 @@ model Tenant {
   opportunities      Opportunity[]
   products           Product[]
   priceBooks         PriceBook[]
+  priceBookEntries   PriceBookEntry[]
   quotes             Quote[]
   orders             Order[]
   campaigns          Campaign[]
@@ -218,7 +292,6 @@ model Tenant {
   productBundleItems ProductBundleItem[]
   priceLists         PriceList[]
   priceListEntries   PriceListEntry[]
-  orderAmendments    OrderAmendment[]
   subscriptions      Subscription[]
   assets             Asset[]
   notes              Note[]
@@ -228,13 +301,17 @@ model Tenant {
 }
 
 model Team {
-  id        String     @id @default(cuid())
-  tenantId  String
-  name      String
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  members   UserTeam[]
+  id          String     @id @default(cuid())
+  tenantId    String
+  name        String
+  createdById String?
+  updatedById String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  tenant      Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy   User?      @relation("TeamCreatedBy", fields: [createdById], references: [id])
+  updatedBy   User?      @relation("TeamUpdatedBy", fields: [updatedById], references: [id])
+  members     UserTeam[]
 
   isArchived Boolean   @default(false)
   archivedAt DateTime?
@@ -247,7 +324,11 @@ model Role {
   id          String       @id @default(cuid())
   tenantId    String
   name        String
+  createdById String?
+  updatedById String?
   tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy   User?        @relation("RoleCreatedBy", fields: [createdById], references: [id])
+  updatedBy   User?        @relation("RoleUpdatedBy", fields: [updatedById], references: [id])
   users       User[]       @relation("UserRoles")
   permissions Permission[] @relation("RolePermissions")
 
@@ -261,73 +342,116 @@ model Permission {
   name        String
   description String?
   subject     Subject?
+  createdById String?
+  updatedById String?
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  Role   Role[] @relation("RolePermissions")
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy User?  @relation("PermissionCreatedBy", fields: [createdById], references: [id])
+  updatedBy User?  @relation("PermissionUpdatedBy", fields: [updatedById], references: [id])
+  Role      Role[] @relation("RolePermissions")
 
   @@unique([tenantId, name], name: "tenantId_name")
   @@index([tenantId])
 }
 
 model User {
-  id         String     @id @default(cuid())
+  id         String    @id @default(cuid())
   tenantId   String
-  email      String     @unique
+  email      String    @unique
   firstName  String
   middleName String?
   lastName   String
   phoneNo    String?
-  password   String
-  status     UserStatus @default(ACTIVE)
+  password   String?
   managerId  String?
-  timeZone   String?    @db.VarChar(64)
-  locale     String?    @db.VarChar(16)
-  createdAt  DateTime   @default(now())
-  createdBy  String
-  updatedAt  DateTime   @updatedAt
+  timeZone   String?   @db.VarChar(64)
+  locale     String?   @db.VarChar(16)
+  createdAt  DateTime  @default(now())
+  createdBy  String?
+  updatedAt  DateTime  @updatedAt
   updatedBy  String?
-  isArchived Boolean    @default(false)
+  isArchived Boolean   @default(false)
   archivedAt DateTime?
   otp        String?
 
-  tenant  Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  roles   Role[]     @relation("UserRoles")
-  manager User?      @relation("UserManager", fields: [managerId], references: [id])
-  reports User[]     @relation("UserManager")
-  teams   UserTeam[]
+  tenant        Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  roles         Role[]     @relation("UserRoles")
+  manager       User?      @relation("UserManager", fields: [managerId], references: [id])
+  reports       User[]     @relation("UserManager")
+  teams         UserTeam[]
+  createdByUser User?      @relation("userCreatedBy", fields: [createdBy], references: [id])
+  createdUsers  User[]     @relation("userCreatedBy")
+  updatedByUser User?      @relation("userUpdatedBy", fields: [updatedBy], references: [id])
+  updatedUsers  User[]     @relation("userUpdatedBy")
 
-  ownedAccounts   Account[] @relation("AccountOwner")
   createdAccounts Account[] @relation("AccountCreatedBy")
   updatedAccounts Account[] @relation("AccountUpdatedBy")
 
-  ownedContacts   Contact[] @relation("ContactOwner")
+  createdAssets Asset[] @relation("AssetCreatedBy")
+  updatedAssets Asset[] @relation("AssetUpdatedBy")
+
   createdContacts Contact[] @relation("ContactCreatedBy")
   updatedContacts Contact[] @relation("ContactUpdatedBy")
 
-  ownedLeads   Lead[] @relation("LeadOwner")
   createdLeads Lead[] @relation("LeadCreatedBy")
   updatedLeads Lead[] @relation("LeadUpdatedBy")
 
-  ownedOpps   Opportunity[] @relation("OpportunityOwner")
   createdOpps Opportunity[] @relation("OpportunityCreatedBy")
   updatedOpps Opportunity[] @relation("OpportunityUpdatedBy")
 
-  ownedQuotes   Quote[] @relation("QuoteOwner")
   createdQuotes Quote[] @relation("QuoteCreatedBy")
   updatedQuotes Quote[] @relation("QuoteUpdatedBy")
 
-  ownedOrders   Order[] @relation("OrderOwner")
   createdOrders Order[] @relation("OrderCreatedBy")
   updatedOrders Order[] @relation("OrderUpdatedBy")
 
   createdTasks  Task[] @relation("TaskCreator")
+  updatedTasks  Task[] @relation("TaskUpdatedBy")
   assignedTasks Task[] @relation("TaskAssignee")
 
   createdEvents Event[]            @relation("EventCreator")
+  updatedEvents Event[]            @relation("EventUpdatedBy")
   participants  EventParticipant[]
 
   createdNotes        Note[]       @relation("NoteCreatedBy")
+  updatedNotes        Note[]       @relation("NoteUpdatedBy")
   uploadedAttachments Attachment[] @relation("AttachmentUploadedBy")
+  updatedAttachments  Attachment[] @relation("AttachmentUpdatedBy")
+
+  createdTeams              Team[]              @relation("TeamCreatedBy")
+  updatedTeams              Team[]              @relation("TeamUpdatedBy")
+  createdTenants            Tenant[]            @relation("TenantCreatedBy")
+  updatedTenants            Tenant[]            @relation("TenantUpdatedBy")
+  createdRoles              Role[]              @relation("RoleCreatedBy")
+  updatedRoles              Role[]              @relation("RoleUpdatedBy")
+  createdPermissions        Permission[]        @relation("PermissionCreatedBy")
+  updatedPermissions        Permission[]        @relation("PermissionUpdatedBy")
+  createdProducts           Product[]           @relation("ProductCreatedBy")
+  updatedProducts           Product[]           @relation("ProductUpdatedBy")
+  createdPriceBooks         PriceBook[]         @relation("PriceBookCreatedBy")
+  updatedPriceBooks         PriceBook[]         @relation("PriceBookUpdatedBy")
+  createdPriceBookEntries   PriceBookEntry[]    @relation("PriceBookEntryCreatedBy")
+  updatedPriceBookEntries   PriceBookEntry[]    @relation("PriceBookEntryUpdatedBy")
+  createdProductBundles     ProductBundle[]     @relation("ProductBundleCreatedBy")
+  updatedProductBundles     ProductBundle[]     @relation("ProductBundleUpdatedBy")
+  createdProductBundleItems ProductBundleItem[] @relation("ProductBundleItemCreatedBy")
+  updatedProductBundleItems ProductBundleItem[] @relation("ProductBundleItemUpdatedBy")
+  createdPriceLists         PriceList[]         @relation("PriceListCreatedBy")
+  updatedPriceLists         PriceList[]         @relation("PriceListUpdatedBy")
+  createdPriceListEntries   PriceListEntry[]    @relation("PriceListEntryCreatedBy")
+  updatedPriceListEntries   PriceListEntry[]    @relation("PriceListEntryUpdatedBy")
+  createdQuoteLineItems     QuoteLineItem[]     @relation("QuoteLineItemCreatedBy")
+  updatedQuoteLineItems     QuoteLineItem[]     @relation("QuoteLineItemUpdatedBy")
+  createdOrderItems         OrderItem[]         @relation("OrderItemCreatedBy")
+  updatedOrderItems         OrderItem[]         @relation("OrderItemUpdatedBy")
+  createdCampaigns          Campaign[]          @relation("CampaignCreatedBy")
+  updatedCampaigns          Campaign[]          @relation("CampaignUpdatedBy")
+  createdSubscriptions      Subscription[]      @relation("SubscriptionCreatedBy")
+  updatedSubscriptions      Subscription[]      @relation("SubscriptionUpdatedBy")
+  createdSubscriptionItems  SubscriptionItem[]  @relation("SubscriptionItemCreatedBy")
+  updatedSubscriptionItems  SubscriptionItem[]  @relation("SubscriptionItemUpdatedBy")
+  createdAddress            Address[]           @relation("AddressCreatedBy")
+  updatedAddress            Address[]           @relation("AddressUpdatedBy")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -345,45 +469,67 @@ model UserTeam {
 
 // ---------------------- Sales Objects -----------------------
 
+model Address {
+  id               String      @id @default(cuid())
+  name             String
+  province         String?
+  city             String
+  street           String
+  postalCode       String
+  country          String
+  isDefault        Boolean?
+  isPrimary        Boolean?
+  addressType      AddressType
+  icxAddressNumber String?
+  isArchived       Boolean     @default(false)
+  parentId         String
+  parent           Account     @relation(fields: [parentId], references: [id])
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  createdById      String?
+  updatedById      String?
+  createdBy        User?       @relation("AddressCreatedBy", fields: [createdById], references: [id])
+  updatedBy        User?       @relation("AddressUpdatedBy", fields: [updatedById], references: [id])
+}
+
 model Account {
-  id       String  @id @default(cuid())
-  tenantId String
-  name     String
-  type     String? @db.VarChar(64) // e.g., Customer, Prospect, Partner
-  industry String? @db.VarChar(64)
-  website  String? @db.VarChar(256)
-  phone    String? @db.VarChar(32)
+  id                    String        @id @default(cuid())
+  tenantId              String
+  name                  String
+  type                  AccountType
+  autoNumber            String        @db.VarChar(10)
+  euid                  String //country code + auto number + random
+  currencyCode          String?       @db.VarChar(3)
+  preferredLanguage     String?
+  status                AccountStatus @default(ACTIVE)
+  countryCode           String
+  icxAccountNumber      String?
+  signupOrigin          String?
+  viewingPlatform       String?
+  type_c                String? //relation to the same table to partner account    customer belongs to which partner
+  segment               String?
+  partnerCustomerNumber String?
+  recordTypeDevName     String?
+  sameAsBilling         Boolean       @default(false)
 
-  billingStreet  String? @db.VarChar(256)
-  billingCity    String? @db.VarChar(128)
-  billingState   String? @db.VarChar(128)
-  billingPostal  String? @db.VarChar(32)
-  billingCountry String? @db.VarChar(128)
-
-  shippingStreet  String?   @db.VarChar(256)
-  shippingCity    String?   @db.VarChar(128)
-  shippingState   String?   @db.VarChar(128)
-  shippingPostal  String?   @db.VarChar(32)
-  shippingCountry String?   @db.VarChar(128)
-  ownerId         String?
-  createdById     String?
-  updatedById     String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  isArchived      Boolean   @default(false)
-  archivedAt      DateTime?
+  createdById String?
+  updatedById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
 
   tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  owner     User?  @relation("AccountOwner", fields: [ownerId], references: [id])
   createdBy User?  @relation("AccountCreatedBy", fields: [createdById], references: [id])
   updatedBy User?  @relation("AccountUpdatedBy", fields: [updatedById], references: [id])
 
+  address        Address[]
   contacts       Contact[]
   opportunities  Opportunity[]
   quotes         Quote[]
   orders         Order[]
   convertedLeads Lead[]         @relation("LeadToAccount")
-  priceLists     PriceList[]
+  priceList      PriceList?
   subscriptions  Subscription[]
   assets         Asset[]
   tasks          Task[]
@@ -391,26 +537,45 @@ model Account {
   notes          Note[]
   attachments    Attachment[]
 
+  billedorders Order[] @relation("OrderBillingAccount")
+
   // Optional: full-text search vector (managed via SQL migration)
   searchVector Unsupported("tsvector")?
 
-  @@unique([tenantId, name])
+  @@unique([id, tenantId, name])
   @@index([tenantId])
-  @@index([ownerId])
   @@index([searchVector], type: Gin)
 }
 
 model Contact {
-  id          String    @id @default(cuid())
-  tenantId    String
-  accountId   String
-  email       String
-  phone       String    @db.VarChar(32)
-  firstName   String
-  middleName  String?
-  lastName    String
-  title       String?   @db.VarChar(128)
-  ownerId     String?
+  id                      String        @id @default(cuid())
+  tenantId                String
+  accountId               String
+  email                   String
+  phone                   String?       @db.VarChar(32)
+  salutation              String
+  firstName               String
+  middleName              String?
+  lastName                String
+  birthDate               DateTime?     @db.Date()
+  currencyCode            String?       @db.VarChar(3)
+  age                     Int?
+  status                  ContactStatus?
+  autoNumber              String
+  contactNumber           String
+  idType                  String        @default("Passport Number")
+  passportExpirationDate  DateTime?
+  passportNumber          String?
+  idNumber                String?
+  countryCode             String
+  icxContactNumber        String?
+  partnerCustomerNumber   String?
+  language                String?
+  signupOrigin            String?
+  communicationPreference String?
+  segment                 String?
+  gender                  Gender?
+
   createdById String?
   updatedById String?
   createdAt   DateTime  @default(now())
@@ -420,7 +585,6 @@ model Contact {
 
   tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   account   Account @relation(fields: [accountId], references: [id])
-  owner     User?   @relation("ContactOwner", fields: [ownerId], references: [id])
   createdBy User?   @relation("ContactCreatedBy", fields: [createdById], references: [id])
   updatedBy User?   @relation("ContactUpdatedBy", fields: [updatedById], references: [id])
 
@@ -434,7 +598,7 @@ model Contact {
 
   searchVector Unsupported("tsvector")?
 
-  @@unique([tenantId, email])
+  @@unique([id, tenantId, email])
   @@index([tenantId])
   @@index([accountId])
   @@index([searchVector], type: Gin)
@@ -450,7 +614,6 @@ model Lead {
   phone                  String?     @db.VarChar(32)
   source                 LeadSource?
   status                 LeadStatus  @default(OPEN)
-  ownerId                String?
   createdById            String?
   updatedById            String?
   convertedAt            DateTime?
@@ -464,7 +627,6 @@ model Lead {
   archivedAt DateTime?
 
   tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  owner     User?  @relation("LeadOwner", fields: [ownerId], references: [id])
   createdBy User?  @relation("LeadCreatedBy", fields: [createdById], references: [id])
   updatedBy User?  @relation("LeadUpdatedBy", fields: [updatedById], references: [id])
 
@@ -480,9 +642,8 @@ model Lead {
 
   searchVector Unsupported("tsvector")?
 
-  @@unique([tenantId, email])
+  @@unique([id, tenantId, email])
   @@index([tenantId])
-  @@index([ownerId])
   @@index([searchVector], type: Gin)
 }
 
@@ -490,7 +651,6 @@ model Opportunity {
   id           String           @id @default(cuid())
   tenantId     String
   accountId    String
-  ownerId      String?
   name         String
   amount       Decimal?         @db.Decimal(18, 2)
   currencyCode String?          @db.VarChar(3)
@@ -511,7 +671,6 @@ model Opportunity {
 
   tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   account   Account   @relation(fields: [accountId], references: [id])
-  owner     User?     @relation("OpportunityOwner", fields: [ownerId], references: [id])
   createdBy User?     @relation("OpportunityCreatedBy", fields: [createdById], references: [id])
   updatedBy User?     @relation("OpportunityUpdatedBy", fields: [updatedById], references: [id])
   campaign  Campaign? @relation(fields: [campaignId], references: [id])
@@ -525,7 +684,7 @@ model Opportunity {
   notes          Note[]
   attachments    Attachment[]
 
-  @@unique([tenantId, accountId, name])
+  @@unique([id, tenantId, accountId, name])
   @@index([tenantId])
   @@index([accountId])
   @@index([stage])
@@ -547,31 +706,43 @@ model OpportunityContactRole {
 // -------------------- Products & Pricing --------------------
 
 model Product {
-  id           String   @id @default(cuid())
-  tenantId     String
-  name         String
-  sku          String?  @db.VarChar(64)
-  description  String?
-  family       String?  @db.VarChar(64)
-  isActive     Boolean  @default(true)
-  unitPrice    Decimal? @db.Decimal(18, 2)
-  currencyCode String?  @db.VarChar(3)
+  id                    String        @id @default(cuid())
+  tenantId              String
+  name                  String
+  commercialName        String?
+  productCode           String        @db.VarChar(64)
+  description           String?
+  family                String?       @db.VarChar(64)
+  subFamily             String?       @db.VarChar(64)
+  category              String?
+  isActive              Boolean       @default(true)
+  status                ProductStatus
+  isOrderable           Boolean?      @default(true)
+  sellingStartDate      DateTime?     @db.Date
+  sellingEndDate        DateTime?     @db.Date
+  fulfilmentStartDate   DateTime?     @db.Date
+  endOfLifeDate         DateTime?     @db.Date
+  // unitPrice             Decimal?      @db.Decimal(18, 2)
+  currencyCode          String?       @db.VarChar(3)
+  billingModel          BillingModel?
+  commitmentDuration    Int?
+  billingFrequency      Int?
+  commitmentDurationUoM String?
+  currency              String?
+  specificationType     String?
+  isBundle              Boolean       @default(false) //subType
+  productSpecName       String?
 
-  // NEW: product categorization
-  type                 ProductType    @default(GOOD)
-  isBundle             Boolean        @default(false)
-  isTaxable            Boolean        @default(true)
-  // Subscription defaults (used when type == SUBSCRIPTION or SERVICE with recurring)
-  defaultBillingPeriod BillingPeriod? // e.g., MONTH
-  defaultTermMonths    Int? // e.g., 12
-  trialDays            Int? // free trial support
-
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  isArchived Boolean   @default(false)
-  archivedAt DateTime?
+  createdById String?
+  updatedById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
 
   tenant           Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy        User?            @relation("ProductCreatedBy", fields: [createdById], references: [id])
+  updatedBy        User?            @relation("ProductUpdatedBy", fields: [updatedById], references: [id])
   priceBookEntries PriceBookEntry[]
 
   // NEW relations
@@ -581,147 +752,195 @@ model Product {
   subscriptionItems SubscriptionItem[]
   priceListEntries  PriceListEntry[]
 
-  @@unique([tenantId, name])
-  @@unique([tenantId, sku])
+  @@unique([id, tenantId, name])
+  @@unique([id, tenantId, productCode])
   @@index([tenantId])
 }
 
 model PriceBook {
-  id       String        @id @default(cuid())
-  tenantId String
-  name     String
-  type     PriceBookType @default(CUSTOM)
-  isActive Boolean       @default(true)
+  id           String        @id @default(cuid())
+  tenantId     String
+  name         String
+  description  String?
+  type         PriceBookType @default(CUSTOM)
+  isActive     Boolean       @default(true)
+  currencyCode String?       @db.VarChar(3)
+  countryCode  String?
+  createdById  String?
+  updatedById  String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  isArchived   Boolean       @default(false)
+  archivedAt   DateTime?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  isArchived  Boolean   @default(false)
-  archivedAt  DateTime?
+  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy User?            @relation("PriceBookCreatedBy", fields: [createdById], references: [id])
+  updatedBy User?            @relation("PriceBookUpdatedBy", fields: [updatedById], references: [id])
+  entries   PriceBookEntry[]
+  priceList PriceList?       @relation("PriceBookPriceList")
 
-  tenant  Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  entries PriceBookEntry[]
-  
-
-  @@unique([tenantId, name])
+  @@unique([id, tenantId, name])
   @@index([tenantId])
 }
 
 model PriceBookEntry {
-  id           String  @id @default(cuid())
-  tenantId     String
-  priceBookId  String
-  productId    String
-  unitPrice    Decimal @db.Decimal(18, 2)
-  currencyCode String  @db.VarChar(3)
-  isActive     Boolean @default(true)
-
+  id               String           @id @default(cuid())
+  tenantId         String
+  priceBookId      String
+  productId        String
+  unitPrice        Decimal          @db.Decimal(18, 2)
+  currencyCode     String           @db.VarChar(3)
+  isActive         Boolean          @default(true)
+  createdById      String?
+  updatedById      String?
   priceBook        PriceBook        @relation(fields: [priceBookId], references: [id], onDelete: Cascade)
   product          Product          @relation(fields: [productId], references: [id])
+  tenant           Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy        User?            @relation("PriceBookEntryCreatedBy", fields: [createdById], references: [id])
+  updatedBy        User?            @relation("PriceBookEntryUpdatedBy", fields: [updatedById], references: [id])
   quoteLineItems   QuoteLineItem[]
   orderItems       OrderItem[]
   priceListEntries PriceListEntry[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  isArchived  Boolean   @default(false)
-  archivedAt  DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  isArchived       Boolean          @default(false)
+  archivedAt       DateTime?
 
-  @@unique([tenantId, priceBookId, productId])
+  @@unique([id, tenantId, priceBookId, productId])
   @@index([tenantId])
   @@index([productId])
 }
 
-// -------------------- Quotes & Orders -----------------------
-
-// NEW: Product Bundling
 model ProductBundle {
   id              String  @id @default(cuid())
   tenantId        String
-  parentProductId String // parent is a product flagged isBundle=true
+  parentProductId String
   name            String
   description     String?
   isActive        Boolean @default(true)
+  createdById     String?
+  updatedById     String?
 
   tenant         Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   parent         Product             @relation("BundleParent", fields: [parentProductId], references: [id])
+  createdBy      User?               @relation("ProductBundleCreatedBy", fields: [createdById], references: [id])
+  updatedBy      User?               @relation("ProductBundleUpdatedBy", fields: [updatedById], references: [id])
   items          ProductBundleItem[]
   quoteLineItems QuoteLineItem[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  isArchived  Boolean   @default(false)
-  archivedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  isArchived Boolean   @default(false)
+  archivedAt DateTime?
 
-  @@unique([tenantId, parentProductId, name])
+  @@unique([id, tenantId, parentProductId, name])
   @@index([tenantId])
 }
 
 model ProductBundleItem {
-  id            String   @id @default(cuid())
-  tenantId      String
-  bundleId      String
-  productId     String
-  quantity      Int      @default(1)
-  // pricing behavior: INHERIT uses price list/price book; OVERRIDE uses overridePrice
-  pricingMode   String   @default("INHERIT") // INHERIT | OVERRIDE | INCLUDED (0)
-  overridePrice Decimal? @db.Decimal(18, 2)
-  isRequired    Boolean  @default(true)
+  id              String @id @default(cuid())
+  name            String @default(uuid())
+  tenantId        String
+  bundleId        String
+  productId       String
+  parentProductId String
+  quantity        Int    @default(1)
+  minquantity     Int
+  maxquantity     Int
+  currency        String
+  sequence        Int
 
-  bundle  ProductBundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
-  product Product       @relation("BundleItemProduct", fields: [productId], references: [id])
-  tenant  Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  // pricing behavior: INHERIT uses price list/price book; OVERRIDE uses overridePrice
+  // pricingMode   PricingMode @default(INHERIT) // INHERIT | OVERRIDE | INCLUDED (0)
+  // overridePrice Decimal?    @db.Decimal(18, 2)
+  // isRequired    Boolean     @default(true)
+  createdById String?
+  updatedById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   isArchived  Boolean   @default(false)
   archivedAt  DateTime?
 
-  @@unique([bundleId, productId])
+  bundle    ProductBundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  product   Product       @relation("BundleItemProduct", fields: [productId], references: [id])
+  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy User?         @relation("ProductBundleItemCreatedBy", fields: [createdById], references: [id])
+  updatedBy User?         @relation("ProductBundleItemUpdatedBy", fields: [updatedById], references: [id])
+
+  @@unique([id, bundleId, productId])
   @@index([tenantId])
 }
 
 // NEW: Price Lists (customer/region/contract specific) integrated with PriceBook and Products
-model PriceList{
-  id           String  @id @default(cuid())
-  tenantId     String
-  name         String
-  currencyCode String? @db.VarChar(3)
-  isActive     Boolean @default(true)
-  accountId    String? // optional account-specific price list
+model PriceList {
+  id            String    @id @default(cuid())
+  tenantId      String
+  name          String
+  description   String?
+  code          String
+  currencyCode  String?   @db.VarChar(3)
+  country       String
+  isActive      Boolean   @default(true)
+  accountType   String
+  accountId     String
+  effectiveFrom DateTime?
+  effectiveTo   DateTime?
+  isTaxable     Boolean?
+  createdById   String?
+  updatedById   String?
 
-  tenant  Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  account Account?         @relation(fields: [accountId], references: [id])
-  entries PriceListEntry[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  isArchived  Boolean   @default(false)
-  archivedAt  DateTime?
+  priceBookId String    @unique
+  priceBook   PriceBook @relation("PriceBookPriceList", fields: [priceBookId], references: [id])
 
-  @@unique([tenantId, name])
+  tenant     Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  account    Account          @relation(fields: [accountId], references: [id])
+  createdBy  User?            @relation("PriceListCreatedBy", fields: [createdById], references: [id])
+  updatedBy  User?            @relation("PriceListUpdatedBy", fields: [updatedById], references: [id])
+  entries    PriceListEntry[]
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  isArchived Boolean          @default(false)
+  archivedAt DateTime?
+
+  @@unique([id, tenantId, name])
+  @@unique([accountId])
   @@index([tenantId])
-  @@index([accountId])
 }
 
 model PriceListEntry {
-  id               String    @id @default(cuid())
-  tenantId         String
-  priceListId      String
-  priceBookEntryId String? // tie to a specific PBE if using a price book
-  productId        String // direct mapping to product for quick lookups
-  unitPrice        Decimal?  @db.Decimal(18, 2) // optional override
-  discountPct      Decimal?  @db.Decimal(5, 2) // 0-100
-  effectiveFrom    DateTime?
-  effectiveTo      DateTime?
-  isActive         Boolean   @default(true)
+  id                 String              @id @default(cuid())
+  tenantId           String
+  name               String
+  description        String?
+  priceListId        String
+  priceBookEntryId   String?
+  productId          String
+  // unitPrice          Decimal?           @db.Decimal(18, 2) // optional override
+  discountPct        Decimal?            @db.Decimal(5, 2) // 0-100
+  amount             Int
+  currencyCode       String?             @db.VarChar(3)
+  effectiveFrom      DateTime            @db.Date
+  effectiveTo        DateTime?           @db.Date
+  isActive           Boolean             @default(true)
+  type               String?
+  virtualPrice       Boolean?
+  override           Boolean?
+  recurringFrequency RecurringFrequency?
+  createdById        String?
+  updatedById        String?
 
   priceList      PriceList       @relation(fields: [priceListId], references: [id], onDelete: Cascade)
   priceBookEntry PriceBookEntry? @relation(fields: [priceBookEntryId], references: [id])
   product        Product         @relation(fields: [productId], references: [id])
   tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  isArchived  Boolean   @default(false)
-  archivedAt  DateTime?
+  createdBy      User?           @relation("PriceListEntryCreatedBy", fields: [createdById], references: [id])
+  updatedBy      User?           @relation("PriceListEntryUpdatedBy", fields: [updatedById], references: [id])
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  isArchived     Boolean         @default(false)
+  archivedAt     DateTime?
 
-  @@unique([tenantId, priceListId, productId, effectiveFrom])
+  @@unique([id, tenantId, priceListId, productId, effectiveFrom])
   @@index([tenantId])
   @@index([productId])
 }
@@ -731,7 +950,6 @@ model Quote {
   tenantId      String
   opportunityId String
   accountId     String
-  ownerId       String?
   status        QuoteStatus @default(DRAFT)
   validUntil    DateTime?
 
@@ -760,7 +978,6 @@ model Quote {
   tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   opportunity Opportunity     @relation(fields: [opportunityId], references: [id])
   account     Account         @relation(fields: [accountId], references: [id])
-  owner       User?           @relation("QuoteOwner", fields: [ownerId], references: [id])
   createdBy   User?           @relation("QuoteCreatedBy", fields: [createdById], references: [id])
   updatedBy   User?           @relation("QuoteUpdatedBy", fields: [updatedById], references: [id])
   items       QuoteLineItem[]
@@ -785,32 +1002,37 @@ model QuoteLineItem {
   bundleId      String? // if this line is the parent of a bundle
   billingPeriod BillingPeriod? // for subscription quotes
   termMonths    Int?
+  createdById   String?
+  updatedById   String?
 
   quote          Quote          @relation(fields: [quoteId], references: [id], onDelete: Cascade)
   priceBookEntry PriceBookEntry @relation(fields: [priceBookEntryId], references: [id])
   bundle         ProductBundle? @relation(fields: [bundleId], references: [id])
-  isArchived  Boolean   @default(false)
-  archivedAt  DateTime?
+  createdBy      User?          @relation("QuoteLineItemCreatedBy", fields: [createdById], references: [id])
+  updatedBy      User?          @relation("QuoteLineItemUpdatedBy", fields: [updatedById], references: [id])
+  isArchived     Boolean        @default(false)
+  archivedAt     DateTime?
+
   @@index([quoteId])
 }
 
-
 model Order {
-  id            String      @id @default(cuid())
-  tenantId      String
-  accountId     String
-  opportunityId String?
-  quoteId       String?
-  ownerId       String?
-  orderNumber   Int         @default(1000)
-  status        OrderStatus @default(DRAFT)
-  orderedAt     DateTime?
-  activatedAt   DateTime?
+  id               String      @id @default(cuid())
+  tenantId         String
+  customerId       String
+  billingAccountId String
+  opportunityId    String?
+  quoteId          String?
+  orderNumber      Int         @default(autoincrement())
+  status           OrderStatus @default(DRAFT)
+  orderedAt        DateTime?   @default(now())
+  activatedAt      DateTime?
+  // recordTypeId  String // foreign key to RecordType
+  // type          RecordType  @relation(fields: [recordTypeId], references: [id])
 
   totalAmount  Decimal @default(0) @db.Decimal(18, 2)
   currencyCode String  @db.VarChar(3)
 
-  // NEW: amendment support
   originalOrderId String?
 
   createdById String?
@@ -820,64 +1042,51 @@ model Order {
   isArchived  Boolean   @default(false)
   archivedAt  DateTime?
 
-  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  account       Account          @relation(fields: [accountId], references: [id])
-  opportunity   Opportunity?     @relation(fields: [opportunityId], references: [id])
-  quote         Quote?           @relation(fields: [quoteId], references: [id])
-  owner         User?            @relation("OrderOwner", fields: [ownerId], references: [id])
-  createdBy     User?            @relation("OrderCreatedBy", fields: [createdById], references: [id])
-  updatedBy     User?            @relation("OrderUpdatedBy", fields: [updatedById], references: [id])
-  items         OrderItem[]
-  amendments    OrderAmendment[]
-  originalOrder Order?           @relation("OrderAmendments", fields: [originalOrderId], references: [id])
-  amendedOrders Order[]          @relation("OrderAmendments")
-  subscriptions Subscription[]
-  notes         Note[]
-  attachments   Attachment[]
+  tenant         Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer       Account        @relation(fields: [customerId], references: [id])
+  opportunity    Opportunity?   @relation(fields: [opportunityId], references: [id])
+  quote          Quote?         @relation(fields: [quoteId], references: [id])
+  createdBy      User?          @relation("OrderCreatedBy", fields: [createdById], references: [id])
+  updatedBy      User?          @relation("OrderUpdatedBy", fields: [updatedById], references: [id])
+  items          OrderItem[]
+  originalOrder  Order?         @relation("OrderAmendments", fields: [originalOrderId], references: [id])
+  amendedOrders  Order[]        @relation("OrderAmendments")
+  subscriptions  Subscription[]
+  notes          Note[]
+  attachments    Attachment[]
+  billingAccount Account        @relation("OrderBillingAccount", fields: [billingAccountId], references: [id])
 
-  @@unique([tenantId, orderNumber])
-  @@index([tenantId])
-}
-
-model OrderAmendment {
-  id            String        @id @default(cuid())
-  tenantId      String
-  orderId       String // the target order being amended
-  amendmentType AmendmentType
-  reason        String?
-  effectiveAt   DateTime
-
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  order  Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  isArchived  Boolean   @default(false)
-  archivedAt  DateTime?
-
+  @@unique([id, tenantId, orderNumber])
   @@index([tenantId])
 }
 
 model OrderItem {
-  id               String  @id @default(cuid())
+  id               String           @id @default(cuid())
   orderId          String
   priceBookEntryId String
-  quantity         Int     @default(1)
-  unitPrice        Decimal @db.Decimal(18, 2)
-  discount         Decimal @default(0) @db.Decimal(18, 2)
-  netAmount        Decimal @db.Decimal(18, 2)
+  quantity         Int              @default(1)
+  unitPrice        Decimal          @db.Decimal(18, 2)
+  discount         Decimal          @default(0) @db.Decimal(18, 2)
+  netAmount        Decimal          @db.Decimal(18, 2)
+  action           OrderItemAction?
 
-  // NEW: service/subscription fulfillment data
   serviceStartAt DateTime?
   serviceEndAt   DateTime?
   billingPeriod  BillingPeriod?
   termMonths     Int?
   subscriptionId String?
   assetId        String?
+  createdById    String?
+  updatedById    String?
 
   order          Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
   priceBookEntry PriceBookEntry @relation(fields: [priceBookEntryId], references: [id])
   subscription   Subscription?  @relation(fields: [subscriptionId], references: [id])
   asset          Asset?         @relation(fields: [assetId], references: [id])
-  isArchived  Boolean   @default(false)
-  archivedAt  DateTime?
+  createdBy      User?          @relation("OrderItemCreatedBy", fields: [createdById], references: [id])
+  updatedBy      User?          @relation("OrderItemUpdatedBy", fields: [updatedById], references: [id])
+  // isArchived     Boolean        @default(false)
+  // archivedAt     DateTime?
 
   @@index([orderId])
   @@index([subscriptionId])
@@ -898,16 +1107,20 @@ model Campaign {
   budgetedCost    Decimal?       @db.Decimal(18, 2)
   actualCost      Decimal?       @db.Decimal(18, 2)
   isActive        Boolean        @default(true)
+  createdById     String?
+  updatedById     String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   tenant         Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy      User?                   @relation("CampaignCreatedBy", fields: [createdById], references: [id])
+  updatedBy      User?                   @relation("CampaignUpdatedBy", fields: [updatedById], references: [id])
   opportunities  Opportunity[]
   contactMembers CampaignContactMember[]
   leadMembers    CampaignLeadMember[]
-  isArchived  Boolean   @default(false)
-  archivedAt  DateTime?
+  isArchived     Boolean                 @default(false)
+  archivedAt     DateTime?
 
   @@unique([tenantId, name])
   @@index([tenantId])
@@ -919,10 +1132,10 @@ model CampaignContactMember {
   contactId  String
   status     String? @db.VarChar(64) // e.g., Sent, Responded
 
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  contact  Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  isArchived  Boolean   @default(false)
-  archivedAt  DateTime?
+  campaign   Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact    Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  isArchived Boolean   @default(false)
+  archivedAt DateTime?
 
   @@unique([campaignId, contactId])
 }
@@ -933,10 +1146,10 @@ model CampaignLeadMember {
   leadId     String
   status     String? @db.VarChar(64)
 
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  lead     Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  isArchived  Boolean   @default(false)
-  archivedAt  DateTime?
+  campaign   Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  lead       Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  isArchived Boolean   @default(false)
+  archivedAt DateTime?
 
   @@unique([campaignId, leadId])
 }
@@ -955,15 +1168,19 @@ model Subscription {
   termMonths    Int?
   autoRenew     Boolean            @default(true)
   currencyCode  String?            @db.VarChar(3)
+  createdById   String?
+  updatedById   String?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  isArchived  Boolean   @default(false)
-  archivedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  isArchived Boolean   @default(false)
+  archivedAt DateTime?
 
   tenant     Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   account    Account            @relation(fields: [accountId], references: [id])
   order      Order?             @relation(fields: [orderId], references: [id])
+  createdBy  User?              @relation("SubscriptionCreatedBy", fields: [createdById], references: [id])
+  updatedBy  User?              @relation("SubscriptionUpdatedBy", fields: [updatedById], references: [id])
   items      SubscriptionItem[]
   assets     Asset[]
   orderItems OrderItem[]
@@ -981,11 +1198,15 @@ model SubscriptionItem {
   discount       Decimal        @default(0) @db.Decimal(18, 2)
   netAmount      Decimal?       @db.Decimal(18, 2)
   billingPeriod  BillingPeriod?
+  createdById    String?
+  updatedById    String?
 
   subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
   product      Product      @relation(fields: [productId], references: [id])
-  isArchived  Boolean   @default(false)
-  archivedAt  DateTime?
+  createdBy    User?        @relation("SubscriptionItemCreatedBy", fields: [createdById], references: [id])
+  updatedBy    User?        @relation("SubscriptionItemUpdatedBy", fields: [updatedById], references: [id])
+  isArchived   Boolean      @default(false)
+  archivedAt   DateTime?
 
   @@index([subscriptionId])
   @@index([productId])
@@ -1007,8 +1228,15 @@ model Asset {
   product      Product       @relation(fields: [productId], references: [id])
   subscription Subscription? @relation(fields: [subscriptionId], references: [id])
   orderItems   OrderItem[]
-  isArchived  Boolean   @default(false)
-  archivedAt  DateTime?
+  isArchived   Boolean       @default(false)
+  archivedAt   DateTime?
+  createdById  String?
+  updatedById  String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  createdBy User? @relation("AssetCreatedBy", fields: [createdById], references: [id])
+  updatedBy User? @relation("AssetUpdatedBy", fields: [updatedById], references: [id])
 
   @@index([tenantId])
   @@index([accountId])
@@ -1033,6 +1261,7 @@ model Task {
   contactId     String?
   opportunityId String?
   leadId        String?
+  updatedById   String?
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -1042,6 +1271,7 @@ model Task {
 
   tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdBy   User         @relation("TaskCreator", fields: [createdById], references: [id])
+  updatedBy   User?        @relation("TaskUpdatedBy", fields: [updatedById], references: [id])
   assignedTo  User?        @relation("TaskAssignee", fields: [assignedToId], references: [id])
   account     Account?     @relation(fields: [accountId], references: [id])
   contact     Contact?     @relation(fields: [contactId], references: [id])
@@ -1071,6 +1301,7 @@ model Event {
   contactId     String?
   opportunityId String?
   leadId        String?
+  updatedById   String?
 
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
@@ -1079,6 +1310,7 @@ model Event {
 
   tenant       Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdBy    User               @relation("EventCreator", fields: [createdById], references: [id])
+  updatedBy    User?              @relation("EventUpdatedBy", fields: [updatedById], references: [id])
   account      Account?           @relation(fields: [accountId], references: [id])
   contact      Contact?           @relation(fields: [contactId], references: [id])
   opportunity  Opportunity?       @relation(fields: [opportunityId], references: [id])
@@ -1097,10 +1329,10 @@ model EventParticipant {
   userId      String
   isOrganizer Boolean @default(false)
 
-  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  isArchived  Boolean   @default(false)
-  archivedAt  DateTime?
+  event      Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isArchived Boolean   @default(false)
+  archivedAt DateTime?
 
   @@id([eventId, userId])
 }
@@ -1123,14 +1355,15 @@ model Note {
   eventId       String?
 
   createdById String
+  updatedById String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   isArchived  Boolean   @default(false)
   archivedAt  DateTime?
- 
 
   tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdBy User   @relation("NoteCreatedBy", fields: [createdById], references: [id])
+  updatedBy User?  @relation("NoteUpdatedBy", fields: [updatedById], references: [id])
 
   account     Account?     @relation(fields: [accountId], references: [id])
   contact     Contact?     @relation(fields: [contactId], references: [id])
@@ -1163,12 +1396,15 @@ model Attachment {
   eventId       String?
 
   uploadedById String
+  updatedById  String?
   createdAt    DateTime  @default(now())
-  isArchived  Boolean   @default(false)
-  archivedAt  DateTime?
+  updatedAt    DateTime  @updatedAt
+  isArchived   Boolean   @default(false)
+  archivedAt   DateTime?
 
   tenant     Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   uploadedBy User   @relation("AttachmentUploadedBy", fields: [uploadedById], references: [id])
+  updatedBy  User?  @relation("AttachmentUpdatedBy", fields: [updatedById], references: [id])
 
   account     Account?     @relation(fields: [accountId], references: [id])
   contact     Contact?     @relation(fields: [contactId], references: [id])

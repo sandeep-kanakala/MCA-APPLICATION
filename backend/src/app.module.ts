@@ -13,6 +13,11 @@ import { ContactModule } from '@/modules/contact/contact.module';
 import { ProductModule } from '@/modules/product/product.module';
 import { BundleItemsModule } from '@/modules/bundle-items/bundle-items.module';
 import { OrderModule } from '@/modules/order/order.module';
+import { PricebookModule } from './modules/pricebook/pricebook.module';
+import { PricelistModule } from './modules/pricelist/pricelist.module';
+import { AssetModule } from './modules/asset/asset.module';
+import { AddressModule } from './modules/address/address.module';
+import { ExportModule } from '@/modules/export/export.module';
 
 @Module({
   imports: [
@@ -31,6 +36,11 @@ import { OrderModule } from '@/modules/order/order.module';
     ProductModule,
     BundleItemsModule,
     OrderModule,
+    PricebookModule,
+    PricelistModule,
+    AssetModule,
+    AddressModule,
+    ExportModule,
   ],
 })
 export class AppModule {}

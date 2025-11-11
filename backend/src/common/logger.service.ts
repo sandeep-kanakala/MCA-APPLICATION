@@ -6,6 +6,13 @@ import DailyRotateFile from 'winston-daily-rotate-file';
 const logDir = path.resolve('logs');
 if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
 
+type printf = {
+  level: string;
+  message: string;
+  timestamp: string;
+  ms: string;
+};
+
 export const winstonLoggerOptions = {
   transports: [
     //console logs
@@ -14,7 +21,7 @@ export const winstonLoggerOptions = {
         format.timestamp(),
         format.ms(),
         format.colorize(),
-        format.printf(({ level, message, timestamp, ms }) => {
+        format.printf(({ level, message, timestamp, ms }: printf) => {
           return `${timestamp} [${level}] ${message} (${ms})`;
         }),
       ),
@@ -31,7 +38,7 @@ export const winstonLoggerOptions = {
       format: format.combine(
         format.timestamp(),
         format.ms(),
-        format.printf(({ level, message, timestamp, ms }) => {
+        format.printf(({ level, message, timestamp, ms }: printf) => {
           return `${timestamp} [${level}] ${message} (${ms})`;
         }),
       ),

@@ -1,20 +1,25 @@
-import { passwordEncoder } from '@/utils/helper';
-import { PrismaService } from './prisma.service';
+import { hash, passwordEncoder } from '@/utils/helper';
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
-import { UserRepository } from '@/infrastructure/repositories/user.repository';
-import { TenantRepository } from '@/infrastructure/repositories/tenant.repository';
+import {
+  UserRepository,
+  RoleRepository,
+  TenantRepository,
+  PermissionsRepository,
+} from '@/infrastructure/repositories';
 import { APP_NAME } from '@/config/constants';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import * as winston from 'winston';
-import { Subject } from '@prisma/client';
+import { Prisma, Subject } from '@prisma/client';
 
 @Injectable()
 export class ApplicationDataIntializer implements OnModuleInit {
   constructor(
-    private readonly prismaService: PrismaService,
+    // private readonly prismaService: PrismaService,
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: winston.Logger,
-    private users: UserRepository,
-    private tenant: TenantRepository,
+    private readonly userRepository: UserRepository,
+    private readonly tenantRepository: TenantRepository,
+    private readonly permissionRepository: PermissionsRepository,
+    private readonly roleRepository: RoleRepository,
   ) {}
   async onModuleInit() {
     const tenantId = process.env.TENANT_ID;
@@ -23,18 +28,18 @@ export class ApplicationDataIntializer implements OnModuleInit {
       throw new Error('TENANT_ID not found in config');
     }
 
-    let tenant = await this.tenant.findByTenantId(tenantId);
+    let tenant = await this.tenantRepository.findByTenantId(tenantId);
 
     if (!tenant) {
       const data = {
         id: tenantId,
         name: APP_NAME,
       };
-      tenant = await this.tenant.createtenant(data);
+      tenant = await this.tenantRepository.createtenant(data);
     }
 
     //add Permissions
-    const userPermissions = [
+    const userPermissions: Prisma.PermissionCreateManyInput[] = [
       {
         tenantId,
         name: 'can_create_user',
@@ -61,56 +66,68 @@ export class ApplicationDataIntializer implements OnModuleInit {
       },
     ];
 
-    await this.prismaService.permission.createMany({
-      data: userPermissions,
-      skipDuplicates: true,
-    });
+    const isCreated = await this.permissionRepository.createPermissions(
+      userPermissions,
+      true,
+    );
 
+    if (!isCreated) {
+      throw new Error('unable to setup permissions');
+    }
     //add Roles and assign permissions
     const roles = ['SUPER_ADMIN', 'ADMIN', 'USER'];
     for (const roleName of roles) {
-      const existingRole = await this.prismaService.role.findFirst({
-        where: { tenantId, name: roleName },
-      });
+      const existingRole = await this.roleRepository.findByRoleName(
+        roleName,
+        tenantId,
+      );
 
-      const payload = {
-        data: {
-          name: roleName,
-          tenantId,
-          permissions: {
-            connect: ['SUPER_ADMIN', 'ADMIN'].includes(roleName)
-              ? userPermissions.map((p) => ({
-                  tenantId_name: { tenantId, name: p.name },
-                }))
-              : [],
-          },
+      const payload: Prisma.RoleCreateInput = {
+        name: roleName,
+        tenant: { connect: { id: tenantId } },
+        permissions: {
+          connect: ['SUPER_ADMIN', 'ADMIN'].includes(roleName)
+            ? userPermissions.map((p) => ({
+                tenantId_name: { tenantId, name: p.name },
+              }))
+            : [],
         },
       };
 
       if (!existingRole) {
-        await this.prismaService.role.create(payload);
+        await this.roleRepository.AssignPermissionsToRole(payload);
       }
     }
 
     // add Super User
-    const superUserEmail = process.env.SUPER_ADMIN_MAIL ?? '';
-    const existingSuperUser = await this.prismaService.user.findFirst({
-      where: { email: superUserEmail, tenantId },
-      include: { roles: true },
-    });
+    const email = process.env.SUPER_ADMIN_MAIL;
+    const superUserPassword = process.env.DEFAULT_PASSWORD;
+    const missing: string[] = [];
+    if (!email) missing.push('SUPER_ADMIN_MAIL');
+    if (!superUserPassword) missing.push('DEFAULT_PASSWORD');
 
+    if (missing.length || !email) {
+      throw new Error(`Missing env variable(s): ${missing.join(', ')}`);
+    }
+
+    const existingSuperUser = await this.userRepository.findUser({
+      email,
+      tenantId,
+    });
     if (!existingSuperUser) {
       const hashedPassword = await passwordEncoder.hashPassword(
-        process.env.DEFAULT_PASSWORD ?? '',
+        superUserPassword!,
       );
-      const userData = {
-        email: superUserEmail,
+      const primary = hash(email);
+      const userData: Prisma.UserCreateInput = {
+        id: primary,
+        email,
         password: hashedPassword,
-        firstName: '',
-        lastName: '',
-        phoneNo: '',
-        createdBy: '',
-        tenantId,
+        firstName: 'Super',
+        lastName: 'Admin',
+        tenant: {
+          connect: { id: tenantId },
+        },
         roles: {
           connect: [
             {
@@ -122,7 +139,7 @@ export class ApplicationDataIntializer implements OnModuleInit {
           ],
         },
       };
-      await this.users.createUser(userData);
+      await this.userRepository.createUser(userData);
     }
   }
 }

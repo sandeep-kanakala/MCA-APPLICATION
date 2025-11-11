@@ -48,7 +48,7 @@ export default function Tenantspage() {
                   <Button
                     onClick={logout}
                     variant="ghost"
-                    className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                    className="text-red-500 cursor-pointer hover:text-red-600 hover:bg-red-50"
                   >
                     Logout
                   </Button>

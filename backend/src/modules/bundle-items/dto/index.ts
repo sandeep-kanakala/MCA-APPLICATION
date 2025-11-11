@@ -1,1 +1,1 @@
-export * as CreateBundleItemDto from './bundle-items.dto';
+export * from './bundle-items.dto';

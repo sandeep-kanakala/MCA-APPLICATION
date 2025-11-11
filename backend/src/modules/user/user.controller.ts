@@ -14,22 +14,27 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { UserRegisterRequestDto, UserUpdateRequestDto } from './dto';
-import { ResponseBuilder, type Response } from '@/utils/response.builder';
 import { UserService } from './user.service';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiBody,
-  ApiQuery,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { AuditEntity } from '@/audit/decorators/audit-log.decorator';
-import type { AuthenticatedRequest, RequestWithUser } from '~/interface';
+import type { AuthenticatedRequest } from '~/interface';
 import { Permissions } from '@/modules/permissions/permissions.decorator';
 import { PermissionsGuard } from '@/modules/permissions/permissions.guard';
 import { LoadEntityInterceptor } from '@/audit/interceptor/load-entity.interceptor';
-import { ApiCommonResponses } from '@/common/api.responses';
+import {
+  DeleteUserApiResponses,
+  GetUserApiResponses,
+  GetUserByIdApiResponses,
+  PatchUserApiBody,
+  PatchUserApiResponses,
+  PostUserApiBody,
+  PostUserApiResponses,
+  UserApiQueries,
+} from '@/common/responses';
+import { ApiMethodDescription } from '@/common/responses';
+import { Response, toBoolean } from '@/utils';
+import { UsersQueryDto } from '@/common';
 
 @ApiTags('User')
 @UseInterceptors(LoadEntityInterceptor)
@@ -37,113 +42,83 @@ import { ApiCommonResponses } from '@/common/api.responses';
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
 @AuditEntity('User')
-@ApiCommonResponses()
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @HttpCode(HttpStatus.OK)
-  @Get('/role')
-  @ApiOperation({
-    summary: 'Get User ',
-    description: 'Retrieve logged in user ',
-  })
-  getRole(@Request() req: AuthenticatedRequest): Response {
-    if (!req.user) {
-      return new ResponseBuilder()
-        .withMessage('User not authenticated')
-        .build();
-    }
-    return new ResponseBuilder()
-      .withMessage('Success')
-      .withData(req.user)
-      .build();
+  @Get('/profile')
+  @GetUserByIdApiResponses()
+  @ApiMethodDescription('Get user profile ', 'Fetches profile of user ')
+  async getUserProfile(
+    @Request() req: AuthenticatedRequest,
+  ): Promise<Response> {
+    return await this.userService.getUserById(req.user.id);
   }
   @HttpCode(HttpStatus.CREATED)
-  @Post('/create')
+  @Post()
+  @PostUserApiResponses()
+  @ApiMethodDescription('Onboard new user')
+  @PostUserApiBody()
   @Permissions('can_create_user')
-  @ApiOperation({
-    summary: 'User Registration',
-    description: 'Register a new user',
-  })
-  @ApiBody({
-    type: UserRegisterRequestDto,
-    examples: {
-      example: {
-        summary: 'User-I',
-        value: {
-          firstName: 'John',
-          middleName: 'AAA',
-          lastName: 'Doe',
-          phoneNo: '1234567890',
-          email: 'john@gmail.com',
-          password: 'John@1234',
-          role: 'USER',
-        },
-      },
-    },
-  })
   async register(
     @Body() userRegisterRequest: UserRegisterRequestDto,
-    @Request() request: RequestWithUser,
+    @Request() request: AuthenticatedRequest,
   ): Promise<Response> {
     return this.userService.create(userRegisterRequest, request);
   }
 
   @HttpCode(HttpStatus.OK)
-  @Get('/list')
+  @Get()
+  @ApiMethodDescription('Get All Users', 'Fetches Users using selected filters')
+  @GetUserApiResponses()
+  @UserApiQueries()
   @Permissions('can_read_user')
-  @ApiOperation({
-    summary: 'Get All Users',
-    description: 'Retrieve a list of all users',
-  })
-  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
-  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
-  async getList(
-    @Query('page') page = 1,
-    @Query('limit') limit = 10,
-  ): Promise<Response> {
-    return this.userService.getAll(page, limit);
+  async getList(@Query() query: UsersQueryDto): Promise<Response> {
+    return this.userService.getAll(
+      query.page,
+      query.limit,
+      query.search,
+      query.fromDate,
+      query.toDate,
+      query.role,
+      query.sortByField,
+      query.sortOrder,
+      toBoolean(query.isArchived),
+    );
   }
 
   @HttpCode(HttpStatus.OK)
   @Get('/:userId')
+  @ApiMethodDescription('Get User by ID')
+  @GetUserByIdApiResponses()
   @Permissions('can_read_user')
-  @ApiOperation({
-    summary: 'Get User by ID',
-    description: 'Retrieve user details by user ID',
-  })
   async getUser(@Param('userId') userId: string): Promise<Response> {
     return this.userService.getUserById(userId);
   }
 
   @HttpCode(HttpStatus.OK)
-  @UseGuards(PermissionsGuard)
-  @Patch('/update/:id')
+  @Patch('/:userId')
+  @ApiMethodDescription('Update User by ID')
+  @PatchUserApiResponses()
+  @PatchUserApiBody()
   @Permissions('can_update_user')
-  @ApiOperation({
-    summary: 'Update User',
-    description: 'Update user details by user ID',
-  })
-  @ApiBody({ type: UserUpdateRequestDto })
   async update(
-    @Param('id') id: string,
+    @Param('userId') userId: string,
     @Body() userUpdateRequest: UserUpdateRequestDto,
-    @Request() request: RequestWithUser,
+    @Request() request: AuthenticatedRequest,
   ): Promise<Response> {
-    return this.userService.update(id, userUpdateRequest, request);
+    return this.userService.update(userId, userUpdateRequest, request);
   }
 
   @HttpCode(HttpStatus.OK)
-  @Delete('/delete/:id')
+  @Delete('/:userId')
+  @ApiMethodDescription('Delete user by ID')
+  @DeleteUserApiResponses()
   @Permissions('can_delete_user')
-  @ApiOperation({
-    summary: 'Delete User',
-    description: 'Delete user by user ID',
-  })
   async delete(
-    @Param('id') id: string,
-    @Request() request: RequestWithUser,
+    @Param('userId') userId: string,
+    @Request() request: AuthenticatedRequest,
   ): Promise<Response> {
-    return this.userService.delete(id, request);
+    return this.userService.delete(userId, request);
   }
 }

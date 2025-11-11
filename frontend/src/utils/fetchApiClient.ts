@@ -74,6 +74,11 @@ async function fetchRequest(
     logEnd();
 
     if (!response.ok) {
+      if (response.status === 401) {
+        if (typeof window !== 'undefined') {
+          window.location.href = '/';
+        }
+      }
       const errorText = await response.text();
       throw { status: response.status, data: errorText || 'Error' };
     }
@@ -83,7 +88,16 @@ async function fetchRequest(
       return response.json();
     }
     return response.text();
-  } catch (err) {
+  } catch (err: any) {
+    if (
+      typeof err === 'object' &&
+      err &&
+      ('status' in err ? err.status === 401 : err.statusCode === 401)
+    ) {
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
+    }
     logEnd();
     throw err;
   }

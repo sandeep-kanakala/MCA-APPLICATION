@@ -54,7 +54,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   };
   const isActive = (path: string) => currentPath.startsWith(path);
   return (
-    <Sidebar variant="inset" {...props}>
+    <Sidebar collapsible="icon" variant="inset" {...props}>
       <SidebarContent>
         <SidebarGroupContent>
           <SidebarMenu className="cursor-pointer ">
@@ -66,7 +66,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       asChild
                       className={`
           ${isActive(item?.url) ? 'bg-[#D4E2FD] text-[#274AFF] border-l-4 border-[#274AFF]' : 'text-gray-700'}
-          hover:bg-[#D4E2FD] hover:text-[#274AFF] hover:border-l-4 hover:border-[#274AFF]
+          hover:bg-[#D4E2FD] hover:text-[#274AFF] hover:border-l-4 hover:border-[#ccced6]
           transition-colors duration-200 rounded-none
         `}
                     >

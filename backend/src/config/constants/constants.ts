@@ -1,0 +1,15 @@
+export const ROLES_KEY = 'roles';
+export const APP_NAME = 'Multichoice';
+export const SUPER_ADMIN = 'SUPER_ADMIN';
+export const ADMIN = 'ADMIN';
+export const USER = 'USER';
+export const KEYVAULT_NAME = 'nodejsazurekeyvault';
+export const ASC = 'asc';
+export const DESC = 'desc';
+export const CREATED_AT = 'createdAt';
+export const CSV = 'CSV';
+export const XLSX = 'XLSX';
+export const allowedDomain = '@linkfields.com';
+export const MICROSOFT_AUTH_PROVIDER = 'MICROSOFT';
+export const LOGIN_TYPE = 'LOGIN';
+export const USER_ROLE = 'USER';

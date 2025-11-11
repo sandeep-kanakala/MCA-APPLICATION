@@ -2,7 +2,6 @@ import { BundleItemRepository } from '@/infrastructure/repositories/bundle-items
 import {
   ConflictException,
   Injectable,
-  InternalServerErrorException,
   NotFoundException,
   Inject,
 } from '@nestjs/common';
@@ -10,10 +9,12 @@ import {
   CreateBundleItemDto,
   UpdateBundleItemDto,
 } from './dto/bundle-items.dto';
-import { RequestWithUser, IUserTokenPayload } from '~/interface';
+import { RequestWithUser } from '~/interface';
 import { ResponseBuilder } from '@/utils/response.builder';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import * as winston from 'winston';
+import { ProductBundleItem } from '@prisma/client';
+import { handleError } from '@/utils';
 
 @Injectable()
 export class BundleItemsService {
@@ -33,23 +34,13 @@ export class BundleItemsService {
         bundleId,
         user.tenantId,
       );
-      if (!bundle) {
-        this.logger.warn(
-          `Bundle not found for ID: ${bundleId}, Tenant: ${user.tenantId}`,
-        );
-        throw new NotFoundException('Bundle Not Found');
-      }
+      if (!bundle) throw new NotFoundException('Bundle Not Found');
 
       const product = await this.bundleItemRepository.findProductById(
         dto.productId,
         user.tenantId,
       );
-      if (!product) {
-        this.logger.warn(
-          `Product not found for ID: ${dto.productId}, Tenant: ${user.tenantId}`,
-        );
-        throw new NotFoundException('Product Not Found');
-      }
+      if (!product) throw new NotFoundException('Product Not Found');
 
       if (product.isBundle) {
         this.logger.warn(
@@ -73,21 +64,9 @@ export class BundleItemsService {
 
       const bundleItem = await this.bundleItemRepository.createBundleItem({
         ...modifiedDto,
-        bundle: {
-          connect: {
-            id: bundleId,
-          },
-        },
-        tenant: {
-          connect: {
-            id: user.tenantId,
-          },
-        },
-        product: {
-          connect: {
-            id: productId,
-          },
-        },
+        bundle: { connect: { id: bundleId } },
+        tenant: { connect: { id: user.tenantId } },
+        product: { connect: { id: productId } },
       });
 
       this.logger.info(
@@ -98,21 +77,12 @@ export class BundleItemsService {
         .withMessage('Bundle Item created successfully')
         .withData(bundleItem)
         .build();
-    } catch (error) {
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ConflictException ||
-        error instanceof InternalServerErrorException
-      ) {
-        throw error;
-      }
-
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
       this.logger.error(
-        `Unexpected error while creating bundle item by ${user.email}: ${error.message}`,
+        `Unexpected error while creating bundle item by ${user.email}: ${message}`,
       );
-      throw new InternalServerErrorException(
-        'Unexpected error occurred while creating bundle item',
-      );
+      handleError(error);
     }
   }
 
@@ -145,22 +115,16 @@ export class BundleItemsService {
         .withMessage('Bundle Item updated successfully')
         .withData(updatedBundleItem)
         .build();
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
       this.logger.error(
-        `Failed to update bundle item ID ${id} by ${user.email}: ${error.message}`,
+        `Failed to update bundle item ID ${id} by ${user.email}: ${message}`,
       );
-      throw new InternalServerErrorException('Failed to update bundle item');
+      handleError(error);
     }
   }
 
-  async DeleteBundleItem(
-    id: string,
-    dto: UpdateBundleItemDto,
-    request: RequestWithUser,
-  ) {
+  async DeleteBundleItem(id: string, request: RequestWithUser) {
     const { user } = request;
 
     try {
@@ -185,16 +149,45 @@ export class BundleItemsService {
 
       return new ResponseBuilder()
         .withMessage('Bundle Item deleted successfully')
+        .withStatusCode(204)
         .withData(deletedBundleItem)
         .build();
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
       this.logger.error(
-        `Failed to delete bundle item ID ${id} by ${user.email}: ${error.message}`,
+        `Failed to delete bundle item ID ${id} by ${user.email}: ${message}`,
       );
-      throw new InternalServerErrorException('Failed to delete bundle item');
+      handleError(error);
     }
+  }
+  async getBundleItem(id: string, request: RequestWithUser) {
+    const { user } = request;
+    try {
+      const bundleItem =
+        await this.bundleItemRepository.findBundleItemByIdAndTenantId(
+          id,
+          user.tenantId,
+        );
+      if (!bundleItem) {
+        this.logger.warn(
+          `Bundle item not found. ID: ${id}, Tenant: ${user.tenantId}`,
+        );
+        throw new NotFoundException('Bundle Item Not Found');
+      }
+      return new ResponseBuilder()
+        .withMessage('Bundle Item fetched successfully')
+        .withData(bundleItem)
+        .build();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        `Failed to get bundle item ID ${id} by ${user.email}: ${message}`,
+      );
+      handleError(error);
+    }
+  }
+
+  async findOne(id: string): Promise<ProductBundleItem | null> {
+    return await this.bundleItemRepository.findById(id);
   }
 }

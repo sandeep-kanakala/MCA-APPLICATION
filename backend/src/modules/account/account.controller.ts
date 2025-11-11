@@ -15,102 +15,112 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AccountService } from './account.service';
-import { CreateAccountDto, UpdateAccountDto } from './dto/account.dto';
 import {
-  ApiBearerAuth,
-  ApiQuery,
-  ApiTags,
-  ApiOperation,
-  ApiBody,
-} from '@nestjs/swagger';
+  CreateAccountDetailsDto,
+  CreateAccountDto,
+  UpdateAccountDto,
+} from './dto';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Response } from '@/utils/response.builder';
-import type { AuditRequest } from '~/interface';
-import { AuditEntity } from '@/audit/decorators/audit-log.decorator';
-import { ApiCommonResponses } from '@/common';
+import type { AuthenticatedRequest } from '~/interface';
 import { LoadEntityInterceptor } from '@/audit/interceptor/load-entity.interceptor';
+import {
+  AccountApiQueries,
+  ApiMethodDescription,
+  CreateAccountApiBody,
+  CreateAccountApiResponses,
+  CreateAccountDetailsApiBody,
+  DeleteAccountApiResponses,
+  GetAccountByIdApiResponses,
+  GetAccountsApiResponses,
+  UpdateAccountApiBody,
+  UpdateAccountApiResponses,
+} from '@/common/responses';
+import { AuditEntity } from '@/audit/decorators/audit-log.decorator';
+import { AccountsQueryDto } from '@/common';
+import { toBoolean } from '@/utils';
 
 @Controller('/accounts')
 @UseInterceptors(LoadEntityInterceptor)
 @ApiBearerAuth('access-token')
 @ApiTags('Accounts')
-@AuditEntity('Account')
 @UseGuards(AuthGuard('jwt'))
-@ApiCommonResponses()
+@AuditEntity('Account')
 export class AccountController {
   constructor(private readonly accounts: AccountService) {}
 
   @HttpCode(HttpStatus.CREATED)
-  @Post('/create')
-  @ApiOperation({
-    summary: 'Create Account',
-    description: 'Create a new account',
-  })
-  @ApiBody({ type: CreateAccountDto })
-  public async create(
+  @Post('/details')
+  @ApiMethodDescription('Create new Account with contact and address')
+  @CreateAccountApiResponses()
+  @CreateAccountDetailsApiBody()
+  async createAccount(
+    @Body() body: CreateAccountDetailsDto,
+    @Request() request: AuthenticatedRequest,
+  ): Promise<Response> {
+    return this.accounts.createAccountDetails(body, request);
+  }
+
+  @HttpCode(HttpStatus.CREATED)
+  @Post()
+  @ApiMethodDescription('Create new Account')
+  @CreateAccountApiResponses()
+  @CreateAccountApiBody()
+  async create(
     @Body() dto: CreateAccountDto,
-    @Request() request: AuditRequest,
+    @Request() request: AuthenticatedRequest,
   ): Promise<Response> {
     return this.accounts.createAccount(dto, request);
   }
 
   @HttpCode(HttpStatus.OK)
-  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
-  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
-  @Get('/list')
-  @ApiOperation({
-    summary: 'Get All Accounts',
-    description: 'Retrieve a list of all accounts',
-  })
-  public async getList(
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-  ): Promise<Response> {
-    return this.accounts.getAll(page, limit);
+  @Get()
+  @ApiMethodDescription('Get All Accounts', 'Fetches all account by tenantID')
+  @GetAccountsApiResponses()
+  @AccountApiQueries()
+  async getList(@Query() query: AccountsQueryDto): Promise<Response> {
+    return this.accounts.getAll(
+      query.page,
+      query.limit,
+      toBoolean(query.isArchived),
+      query.sortByField,
+      query.search,
+      query.type,
+      query.fromDate,
+      query.toDate,
+      query.sortOrder,
+    );
   }
 
   @HttpCode(HttpStatus.OK)
-  @Get('/:id')
-  @ApiOperation({
-    summary: 'Get Account by ID',
-    description: 'Retrieve account details by ID',
-  })
-  public async getAccount(@Param('id') id: string): Promise<Response> {
-    return this.accounts.getAccountById(id);
+  @Get('/:accountId')
+  @ApiMethodDescription('Get Account by ID')
+  @GetAccountByIdApiResponses()
+  async getAccount(@Param('accountId') accountId: string): Promise<Response> {
+    return this.accounts.getAccountById(accountId);
   }
 
   @HttpCode(HttpStatus.OK)
-  @Patch('/update/:id')
-  @ApiOperation({
-    summary: 'Update Account',
-    description: 'Update account details by ID',
-  })
-  @ApiBody({ type: UpdateAccountDto })
-  public async update(
-    @Param('id') id: string,
+  @Patch('/:accountId')
+  @ApiMethodDescription('Update Account by ID')
+  @UpdateAccountApiResponses()
+  @UpdateAccountApiBody()
+  async update(
+    @Param('accountId') accountId: string,
     @Body() dto: UpdateAccountDto,
-    @Request() request: AuditRequest,
+    @Request() request: AuthenticatedRequest,
   ): Promise<Response> {
-    return this.accounts.updateAccount(id, dto, request);
+    return this.accounts.updateAccount(accountId, dto, request);
   }
 
   @HttpCode(HttpStatus.OK)
-  @Delete('/delete/:id')
-  @ApiOperation({
-    summary: 'Delete Account',
-    description: 'Delete account by ID',
-  })
-  public async delete(
-    @Param('id') id: string,
-    @Request() request: AuditRequest,
+  @Delete('/:accountId')
+  @ApiMethodDescription('Delete Account by ID')
+  @DeleteAccountApiResponses()
+  async delete(
+    @Param('accountId') accountId: string,
+    @Request() request: AuthenticatedRequest,
   ): Promise<Response> {
-    return this.accounts.deleteAccount(id, request);
-  }
-
-  @HttpCode(HttpStatus.OK)
-  @Get('/contact/:id')
-  async getAccountDetailsByContactId(
-    @Param('id') id: string,
-  ): Promise<Response> {
-    return this.accounts.getAccountByContactId(id);
+    return this.accounts.deleteAccount(accountId, request);
   }
 }

@@ -4,14 +4,21 @@ import {
   AuditRequest,
   AuthenticatedRequest,
   AuditLogFilter,
+  AuditLogDetails,
 } from '~/interface';
 import { ResponseBuilder } from '@/utils/response.builder';
 import type { Response } from '@/utils/response.builder';
-import { isIUserTokenPayload } from '@/utils/helper';
+import { isIUserTokenPayload, safeJsonParse } from '@/utils/helper';
+
+function sanitizeBody(body?: Record<string, unknown> | null) {
+  if (!body) return null;
+  const { password, confirmPassword, oldPassword, ...rest } = body;
+  return rest;
+}
 
 @Injectable()
 export class AuditLogService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   private checkUserType(req?: AuditRequest) {
     const user = req?.user;
@@ -50,11 +57,11 @@ export class AuditLogService {
   }: {
     entity: string;
     entityId?: string;
-    action: 'CREATE' | 'UPDATE' | 'DELETE';
-    before?: any;
-    after?: any;
+    action: 'CREATED' | 'UPDATED' | 'DELETED';
+    before?: unknown;
+    after?: unknown;
     req?: AuditRequest;
-    response?: any;
+    response?: unknown;
   }) {
     const performedBy = this.checkUserType(req);
     const meta = {
@@ -62,15 +69,25 @@ export class AuditLogService {
       userAgent: req?.headers?.['user-agent'],
     };
 
+    const beforeId =
+      typeof before === 'object' && before !== null && 'id' in before
+        ? (before as { id: string }).id
+        : undefined;
+
+    const afterId =
+      typeof after === 'object' && after !== null && 'id' in after
+        ? (after as { id: string }).id
+        : undefined;
+
     await this.prisma.auditLog.create({
       data: {
         entity,
-        entityId: entityId || after?.id || before?.id || 'unknown',
+        entityId: entityId || afterId || beforeId || 'unknown',
         action,
         details: JSON.stringify({
           before: before || null,
           after: after || null,
-          body: req?.body || null,
+          body: sanitizeBody(req?.body as Record<string, unknown>),
           query: req?.query || null,
           params: req?.params || null,
           response: response || null,
@@ -100,7 +117,9 @@ export class AuditLogService {
 
     const parsedLogs = logs.map((log) => ({
       ...log,
-      details: log.details ? JSON.parse(log.details) : null,
+      details: log.details
+        ? (JSON.parse(log.details) as Record<string, unknown>)
+        : null,
     }));
 
     return new ResponseBuilder()
@@ -119,39 +138,30 @@ export class AuditLogService {
     entity: string,
     req: AuthenticatedRequest,
     entityId?: string,
-    all?: string,
   ): Promise<Response> {
     const filterCriteria: AuditLogFilter = { entity };
 
     if (entityId) filterCriteria.entityId = entityId;
-
-    const roleNames = req.user.roles.map((role) => role.name);
-
-    filterCriteria.userId = req.user.id;
-
-    if (roleNames.includes('ADMIN')) {
-      if (all === 'true') {
-        delete filterCriteria.userId;
-      }
-    }
 
     const logs = await this.prisma.auditLog.findMany({
       where: filterCriteria,
       orderBy: { createdAt: 'desc' },
     });
 
-    const parsedLogs = logs.map((log) => ({
-      id: log.id,
-      action: log.action,
-      performedBy: log.details
-        ? JSON.parse(log.details).user?.email
-        : log.userId,
-      timestamp: log.createdAt,
-      changes: {
-        before: JSON.parse(log.details)?.before || null,
-        after: JSON.parse(log.details)?.after || null,
-      },
-    }));
+    const parsedLogs = logs.map((log) => {
+      const parsed = safeJsonParse<AuditLogDetails>(log.details);
+
+      return {
+        id: log.id,
+        action: log.action,
+        performedBy: parsed?.user?.email ?? log.userId,
+        timestamp: log.createdAt,
+        changes: {
+          before: parsed?.before ?? null,
+          after: parsed?.after ?? null,
+        },
+      };
+    });
 
     return new ResponseBuilder()
       .withMessage('Entity timeline fetched successfully.')

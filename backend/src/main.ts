@@ -2,13 +2,12 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from '@/app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ZodValidationPipe } from '@anatine/zod-nestjs';
-import dotenv from 'dotenv';
 import { AuditInterceptor } from './audit/interceptor/audit-log.interceptor';
 import { WinstonModule } from 'nest-winston';
 import { winstonLoggerOptions } from './common/logger.service';
+import { Logger } from '@nestjs/common';
 
 async function bootstrap() {
-  dotenv.config({ path: 'mail.env' });
   const app = await NestFactory.create(AppModule, {
     logger: WinstonModule.createLogger(winstonLoggerOptions),
   });
@@ -45,4 +44,7 @@ async function bootstrap() {
 
   await app.listen(process.env.PORT ?? 8080);
 }
-bootstrap();
+bootstrap().catch((err) => {
+  Logger.error('something went wrong!', err);
+  process.exit(1);
+});

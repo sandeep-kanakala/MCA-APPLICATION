@@ -14,7 +14,7 @@ import type { AuthenticatedRequest } from '~/interface';
 import type { Response } from '@/utils/response.builder';
 
 @ApiTags('Audit Log')
-@Controller('audit-logs')
+@Controller('/audit-logs')
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 @ApiResponse({
@@ -36,7 +36,7 @@ export class AuditLogController {
   constructor(private readonly auditLogService: AuditLogService) {}
 
   @Get()
-  @Roles('SUPER_ADMIN', 'ADMIN')
+  @Roles('ADMIN', 'SUPER_ADMIN')
   @ApiOperation({
     summary: 'Get all audit logs',
     description: 'Retrieve a list of all audit logs',
@@ -50,7 +50,7 @@ export class AuditLogController {
   async getAllLogs(
     @Query('page') page?: number,
     @Query('limit') limit?: number,
-  ): Promise<any> {
+  ): Promise<Response> {
     return this.auditLogService.getAllLogs(page, limit);
   }
 
@@ -65,19 +65,11 @@ export class AuditLogController {
     description: 'Audit/Activity logs retrieved successfully for the entity.',
   })
   @ApiQuery({ name: 'entityId', required: false, type: String })
-  @ApiQuery({
-    name: 'all',
-    required: false,
-    type: String,
-    description: 'Admin: set true to see all logs of others',
-    example: 'false',
-  })
   async getEntityLogs(
     @Param('entity') entity: string,
     @Req() req: AuthenticatedRequest,
     @Query('entityId') entityId?: string,
-    @Query('all') all?: string,
   ): Promise<Response> {
-    return this.auditLogService.getLogsByEntity(entity, req, entityId, all);
+    return this.auditLogService.getLogsByEntity(entity, req, entityId);
   }
 }

@@ -1,4 +1,4 @@
-export interface Response<T = any> {
+export interface Response<T = unknown> {
   statusCode: number;
   message: string;
   data: T | null;

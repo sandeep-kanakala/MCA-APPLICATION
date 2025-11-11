@@ -14,11 +14,25 @@ import { ContactService } from '@/modules/contact/contact.service';
 import { AccountService } from '@/modules/account/account.service';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import winston from 'winston';
+import { OrderService } from '@/modules/order/order.service';
+import { PricebookService } from '@/modules/pricebook/pricebook.service';
+import { PricelistService } from '@/modules/pricelist/pricelist.service';
+import { AssetService } from '@/modules/asset/asset.service';
+import { ProductService } from '@/modules/product/product.service';
+import { BundleItemsService } from '@/modules/bundle-items/bundle-items.service';
+import { AddressService } from '@/modules/address/address.service';
 
 const serviceMap: Record<string, Type<FindOneCapable>> = {
   users: UserService,
   contacts: ContactService,
   accounts: AccountService,
+  address: AddressService,
+  orders: OrderService,
+  PriceBook: PricebookService,
+  pricelist: PricelistService,
+  assets: AssetService,
+  products: ProductService,
+  bundleItems: BundleItemsService,
 };
 
 @Injectable()
@@ -31,11 +45,10 @@ export class LoadEntityInterceptor implements NestInterceptor {
   async intercept(
     context: ExecutionContext,
     next: CallHandler,
-  ): Promise<Observable<any>> {
+  ): Promise<Observable<unknown>> {
     const req: AuditRequest = context.switchToHttp().getRequest<AuditRequest>();
-    const id = req.params.id;
+    const [id] = Object.values(req.params);
     const method = req.method;
-
     const needsBeforeData =
       id && (method === 'PATCH' || method === 'PUT' || method === 'DELETE');
 
@@ -45,7 +58,6 @@ export class LoadEntityInterceptor implements NestInterceptor {
 
     const pathSegments = req.path.split('/').filter(Boolean);
     const entityName = pathSegments[0];
-
     const ServiceClass = serviceMap[entityName];
 
     if (ServiceClass) {
@@ -54,21 +66,21 @@ export class LoadEntityInterceptor implements NestInterceptor {
           strict: false,
         });
         const entity = await service.findOne(id);
-
         if (method === 'DELETE') {
           req.beforeDelete = entity;
         } else {
           req.beforeUpdate = entity;
         }
       } catch (error) {
-        this.handleAuditError(entityName, id, error);
+        const err: Error =
+          error instanceof Error ? error : new Error(String(error));
+        this.handleAuditError(entityName, id, err);
       }
     }
-
     return next.handle();
   }
 
-  private handleAuditError(entityName, id, error) {
+  private handleAuditError(entityName: string, id: string, error: Error) {
     const errorMessage = `Failed to load entity '${entityName}' (${id}) for audit log: ${error.message}`;
     this.logger.error(errorMessage, error);
     throw new Error(errorMessage);

@@ -11,13 +11,12 @@ import {
 } from '@/components/ui/drawer';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import '@/index.css';
 
 interface DrawerDirectionsProps {
   title?: string;
   description?: string;
   children?: ReactNode;
-  onActionClick?: (onClose: () => void) => void; 
+  onActionClick?: (onClose: () => void) => void;
   actionButtonLabel?: string;
   isSubmitting?: boolean;
   trigger?: ReactNode;
@@ -33,12 +32,12 @@ export default function DrawerDirections({
   trigger,
 }: DrawerDirectionsProps) {
   const [open, setOpen] = useState(false);
-  
+
   const onClose = () => setOpen(false);
 
   const handleActionClick = () => {
     if (onActionClick) {
-      onActionClick(onClose); 
+      onActionClick(onClose);
     }
   };
 

@@ -1,12 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
-import { SentMessageInfo } from 'nodemailer';
+import { Transporter, SentMessageInfo } from 'nodemailer';
 
 @Injectable()
 export class MailUtils {
   private readonly logger = new Logger(MailUtils.name);
-  private readonly transporter: nodemailer.Transporter<SentMessageInfo>;
+  private readonly transporter: Transporter<SentMessageInfo>;
 
   constructor(private readonly configService: ConfigService) {
     const mailHost = this.configService.get<string>('MAIL_HOST');
@@ -31,22 +31,25 @@ export class MailUtils {
     });
   }
 
-  sendEmail(to: string, subject: string, html: string): void {
+  async sendEmail(to: string, subject: string, html: string): Promise<void> {
     const mailOptions: nodemailer.SendMailOptions = {
       from: this.configService.get<string>('MAIL_USER')!,
       to,
       subject,
       html,
     };
-    this.transporter.sendMail(mailOptions).then(
-      () => this.logger.log(`Email successfully sent to ${to}`),
-      (error: Error) =>
-        this.logger.error(`Failed to send email to ${to}: ${error.message}`),
-    );
-    this.logger.log(`Email sending initiated for ${to}`);
+    try {
+      await this.transporter.sendMail(mailOptions);
+      this.logger.log(`Email successfully sent to ${to}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to send email to ${to}: ${(error as Error).message}`,
+      );
+      this.logger.log(`Email sending initiated for ${to}`);
+      throw error;
+    }
   }
-
-  sendOtpEmail(email: string, otp: string): void {
+  async sendOtpEmail(email: string, otp: string): Promise<void> {
     const subject = this.configService.get<string>('MAIL_SUBJECT_FORGOT');
     const text = this.configService.get<string>('MAIL_TEXT_FORGOT');
 
@@ -58,6 +61,6 @@ export class MailUtils {
 
     const html = text.replace('{emailId}', email).replace('{otp}', otp);
 
-    this.sendEmail(email, subject, html);
+    await this.sendEmail(email, subject, html);
   }
 }

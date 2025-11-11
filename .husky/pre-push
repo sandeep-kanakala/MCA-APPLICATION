@@ -1,10 +1,39 @@
-#!/usr/bin/env sh
+#!/bin/bash
 . "$(dirname -- "$0")/_/husky.sh"
 
-# Go to frontend folder
-cd frontend || exit 1
+echo "🚀 Running pre-push checks..."
 
-echo "🔹 Running build..."
-npm run build || exit 1
+# Move to repo root
+cd "$(git rev-parse --show-toplevel)" || exit 1
 
-echo "✅ All pre-push checks passed. You can push now!"
+# Get list of committed changes since last push
+# (compares local HEAD with remote branch)
+STAGED_FILES=$(git diff --name-only origin/$(git rev-parse --abbrev-ref HEAD) HEAD 2>/dev/null || true)
+
+# --- FRONTEND CHECKS ---
+if echo "$STAGED_FILES" | grep -q "^frontend/"; then
+  echo "🧩 Running frontend build..."
+  cd frontend || exit 1
+  npm run build || {
+    echo '❌ [FRONTEND PRE_PUSH_ERROR] :: Build failed. Fix issues before pushing.'
+    exit 1
+  }
+  cd ..
+else
+  echo "⚙️  No frontend changes detected, skipping frontend build."
+fi
+
+# --- BACKEND CHECKS ---
+if echo "$STAGED_FILES" | grep -q "^backend/"; then
+  echo "🧩 Running backend tests..."
+  cd backend || exit 1
+  npm run test || {
+    echo '❌ [BACKEND PRE_PUSH_ERROR] :: Tests failed. Fix issues before pushing.'
+    exit 1
+  }
+  cd ..
+else
+  echo "⚙️  No backend changes detected, skipping backend tests."
+fi
+
+echo "✅ All pre-push checks passed! You can push now 🚀"

@@ -1,20 +1,23 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Eye, EyeOff } from 'lucide-react';
 import Logo from '@/assets/MultiChoice_logo.svg';
 import { useCustomNavigate } from '@/app/hooks';
-import { loginUser } from '@/utils/services/login';
-import '@/index.css';
+import { loginUser, loginWithMicrosoft } from '@/utils/services/login';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from '@/components/ui/sonner';
+import RouteLink from '@/features/components/RouteLink';
 
 const loginSchema = z.object({
-  email: z.email({ message: 'Invalid email format' }),
+  email: z
+    .string()
+    .min(1, { message: 'Email is required' })
+    .email({ message: 'Please enter a valid email address' }),
   password: z.string().min(1, { message: 'Password is required' }),
 });
 
@@ -33,21 +36,19 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (data: LoginForm) => {
-    toast.promise(
-      loginUser(data.email, data.password).then((res) => {
-        if (res.statusCode === 200) {
-          navigate('/apps');
-        } else {
-          throw new Error(res.message || res.response.message);
-        }
-        return res;
-      }),
-      {
-        loading: 'Logging in...',
-        success: (res) => res.message,
-        error: 'Login failed',
-      },
-    );
+    const normalizedEmail = data.email.toLowerCase().trim();
+    const loginPromise = loginUser(normalizedEmail, data.password).then((res) => {
+      if (res.statusCode === 200) {
+        navigate('/apps');
+      }
+      return res;
+    });
+
+    toast.promise(loginPromise, {
+      loading: 'Logging in...',
+      success: (res) => res.message ?? 'Welcome back!',
+      error: (err) => err.message ?? 'Login failed',
+    });
   };
 
   return (
@@ -60,14 +61,15 @@ export default function LoginPage() {
                 className="p-6 md:p-8 h-full flex flex-col justify-center"
                 onSubmit={handleSubmit(onSubmit)}
               >
-                <FieldGroup>
-                  <div className="flex flex-col items-center gap-2 text-center mb-4">
+                {/* REMOVE FIELDGROUP DEFAULT SPACING — USE CUSTOM GAP */}
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col items-center gap-2 text-center mb-2">
                     <h1 className="text-2xl font-bold">Welcome back</h1>
                     <p className="text-muted-foreground">Login to your account</p>
                   </div>
 
                   {/* EMAIL FIELD */}
-                  <Field>
+                  <Field className="m-0">
                     <FieldLabel htmlFor="email">Email</FieldLabel>
                     <Input
                       id="email"
@@ -82,10 +84,8 @@ export default function LoginPage() {
                   </Field>
 
                   {/* PASSWORD FIELD */}
-                  <Field>
-                    <div className="flex items-center">
-                      <FieldLabel htmlFor="password">Password</FieldLabel>
-                    </div>
+                  <Field className="m-0">
+                    <FieldLabel htmlFor="password">Password</FieldLabel>
                     <div className="relative">
                       <Input
                         id="password"
@@ -96,7 +96,7 @@ export default function LoginPage() {
                       />
                       <span
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer transition"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer"
                       >
                         {showPassword ? (
                           <EyeOff className="w-4 h-4" />
@@ -105,18 +105,45 @@ export default function LoginPage() {
                         )}
                       </span>
                     </div>
-                    {errors.password && (
-                      <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
-                    )}
+
+                    <p className="text-center text-sm mt-1 text-muted-foreground">
+                      Don't remember your password?{' '}
+                      <RouteLink
+                        href="/forgot-password"
+                        className="text-primary font-medium hover:underline"
+                      >
+                        Forgot Password?
+                      </RouteLink>
+                    </p>
                   </Field>
 
-                  {/* LOGIN BUTTON */}
-                  <Field>
-                    <Button type="submit" className="cursor-pointer h-12 mt-2">
-                      Login
-                    </Button>
-                  </Field>
-                </FieldGroup>
+                  {/* LOGIN BUTTON — REDUCE SPACE */}
+                  <Button type="submit" className="cursor-pointer h-12 w-full mt-1">
+                    Login
+                  </Button>
+
+                  {/* OR SEPARATOR — ZERO EXTRA SPACE */}
+                  <div className="flex items-center gap-2 -mt-1">
+                    <div className="flex-1 border-t" />
+                    <span className="text-xs text-muted-foreground">OR</span>
+                    <div className="flex-1 border-t" />
+                  </div>
+
+                  {/* MICROSOFT BUTTON — NO EXTRA MARGINS */}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="cursor-pointer h-12 w-full flex items-center justify-center gap-2"
+                    onClick={loginWithMicrosoft}
+                  >
+                    <img
+                      src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg"
+                      alt="Microsoft Logo"
+                      className="h-5"
+                    />
+                    Login with Microsoft
+                  </Button>
+                </div>
               </form>
 
               <div className="bg-muted relative hidden md:flex items-center justify-center h-full">

@@ -6,6 +6,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtStrategy } from './strategy/jwt.strategy';
 import { MailUtils } from '@/utils/mailutils';
 import { ResetPasswordJwtStrategy } from './strategy/ResetPasswordStrategy';
+import { MicrosoftStrategy } from './strategy/microsoft.strategy';
+import { RepositoriesModule } from '@/infrastructure/repositories/repositories.module';
 
 @Module({
   imports: [
@@ -20,9 +22,16 @@ import { ResetPasswordJwtStrategy } from './strategy/ResetPasswordStrategy';
         },
       }),
     }),
+    RepositoriesModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, MailUtils, ResetPasswordJwtStrategy],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    MailUtils,
+    ResetPasswordJwtStrategy,
+    MicrosoftStrategy,
+  ],
   exports: [JwtModule],
 })
 export class AuthModule {}

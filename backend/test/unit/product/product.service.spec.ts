@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import {
   ConflictException,
   InternalServerErrorException,
-  NotFoundException,
 } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { ProductService } from '@/modules/product/product.service';
@@ -11,8 +10,14 @@ import {
   UpdateProductDto,
 } from '@/modules/product/dto/product.dto';
 import { PrismaService } from '@/prisma/prisma.service';
-import { productRepository } from '@/infrastructure/repositories/product.repository';
+import { ProductRepository } from '@/infrastructure/repositories/product.repository';
 import { JwtService } from '@nestjs/jwt';
+import { RequestWithUser } from '~/interface';
+import { AuditLogService } from '@/audit/audit-log.service';
+
+const mockAuditLogService = {
+  log: jest.fn(),
+};
 
 const mockProductRepository = {
   findByNameAndTenantId: jest.fn(),
@@ -28,6 +33,7 @@ const mockProductRepository = {
   countBundles: jest.fn(),
   getPaginatedBundles: jest.fn(),
   findBundleByIdandTenantId: jest.fn(),
+  findManyProductBundles: jest.fn().mockResolvedValue([]),
 };
 
 const mockLogger = {
@@ -37,13 +43,48 @@ const mockLogger = {
 
 const mockJwtService = {};
 const mockUser = {
-  id: 'user-1',
-  email: 'test@example.com',
-  tenantId: 'tenant-1',
-  iat: 0,
-  exp: 0,
-} as any;
-const mockRequest = {} as any;
+  id: 'cmh0e1i7n000bsas4k46i1atw',
+  tenantId: 'cmf3mwg3u09hspoye9ggodyvh',
+  email: 'admin@linkfields.com',
+  firstName: '',
+  middleName: null,
+  lastName: '',
+  phoneNo: '',
+  roles: [
+    {
+      id: 'cmh0e1cc50005sas4ps1vm357',
+      tenantId: 'cmf3mwg3u09hspoye9ggodyvh',
+      name: 'SUPER_ADMIN',
+    },
+  ],
+};
+
+const mockRequest = {
+  user: mockUser,
+} as unknown as RequestWithUser;
+
+type CreateProductData = {
+  product: { id: string };
+  bundle?: { id: string };
+};
+
+type TestProduct = {
+  id: string;
+  name?: string;
+  isBundle?: boolean;
+  tenantId?: string;
+  bundlesAsParent?: { id: string; items?: { id: string }[] }[];
+};
+
+type PaginatedProductData = {
+  total: number;
+  data: TestProduct[];
+};
+
+type MakeBundleData = {
+  product: TestProduct;
+  bundle: { id: string };
+};
 
 describe('ProductService with Zod DTOs', () => {
   let service: ProductService;
@@ -53,9 +94,19 @@ describe('ProductService with Zod DTOs', () => {
       providers: [
         ProductService,
         { provide: WINSTON_MODULE_PROVIDER, useValue: mockLogger },
-        { provide: productRepository, useValue: mockProductRepository },
-        { provide: PrismaService, useValue: {} },
+        { provide: ProductRepository, useValue: mockProductRepository },
+        {
+          provide: PrismaService,
+          useValue: {
+            $transaction: jest.fn(
+              (
+                fn: (prisma: typeof mockProductRepository) => Promise<unknown>,
+              ) => fn(mockProductRepository),
+            ),
+          },
+        },
         { provide: JwtService, useValue: mockJwtService },
+        { provide: AuditLogService, useValue: mockAuditLogService },
       ],
     }).compile();
 
@@ -80,11 +131,11 @@ describe('ProductService with Zod DTOs', () => {
         ...dto,
       });
 
-      const result = await service.createProduct(dto, mockUser, mockRequest);
+      const result = await service.createProduct(dto, mockRequest);
 
       expect(mockProductRepository.createProduct).toHaveBeenCalled();
       expect(mockProductRepository.createProductBundle).not.toHaveBeenCalled();
-      expect(result.data.product.id).toBe('prod-1');
+      expect((result.data as TestProduct).id).toBe('prod-1');
     });
 
     it('should create product with bundle', async () => {
@@ -100,15 +151,15 @@ describe('ProductService with Zod DTOs', () => {
       mockProductRepository.createProduct.mockResolvedValue({
         id: 'prod-2',
         ...dto,
-      });
-      mockProductRepository.createProductBundle.mockResolvedValue({
-        id: 'bundle-1',
+        bundlesAsParent: [{ id: 'bundle-1', items: [] }],
       });
 
-      const result = await service.createProduct(dto, mockUser, mockRequest);
+      const result = await service.createProduct(dto, mockRequest);
 
-      expect(mockProductRepository.createProductBundle).toHaveBeenCalled();
-      expect(result.data.bundle.id).toBe('bundle-1');
+      expect(mockProductRepository.createProductBundle).not.toHaveBeenCalled();
+      expect((result.data as TestProduct).bundlesAsParent![0].id).toBe(
+        'bundle-1',
+      );
     });
 
     it('should throw conflict if name already exists', async () => {
@@ -122,10 +173,9 @@ describe('ProductService with Zod DTOs', () => {
         id: 'existing',
       });
 
-      // Service currently wraps errors and returns InternalServerErrorException
-      await expect(
-        service.createProduct(dto, mockUser, mockRequest),
-      ).rejects.toThrow(InternalServerErrorException);
+      await expect(service.createProduct(dto, mockRequest)).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('should throw conflict if sku already exists', async () => {
@@ -141,9 +191,30 @@ describe('ProductService with Zod DTOs', () => {
       });
 
       // Service currently wraps errors and returns InternalServerErrorException
-      await expect(
-        service.createProduct(dto, mockUser, mockRequest),
-      ).rejects.toThrow(InternalServerErrorException);
+      await expect(service.createProduct(dto, mockRequest)).rejects.toThrow(
+        ConflictException,
+      );
+    });
+
+    it('should fail when sku is missing (sku mandatory)', async () => {
+      const dto = {
+        name: 'No SKU Product',
+        // sku intentionally omitted
+        type: 'GOOD',
+        isBundle: false,
+      } as unknown as CreateProductDto;
+
+      mockProductRepository.findByNameAndTenantId.mockResolvedValue(null);
+      mockProductRepository.findBySkuAndTenantId.mockResolvedValue(null);
+      // Simulate prisma validation error when sku is missing
+      mockProductRepository.createProduct.mockRejectedValue(
+        new Error('sku is required'),
+      );
+
+      await expect(service.createProduct(dto, mockRequest)).rejects.toThrow(
+        InternalServerErrorException,
+      );
+      expect(mockProductRepository.createProduct).toHaveBeenCalled();
     });
   });
 
@@ -164,15 +235,10 @@ describe('ProductService with Zod DTOs', () => {
       });
       mockProductRepository.updateProduct.mockResolvedValue({ id, ...dto });
 
-      const result = await service.updateProduct(
-        id,
-        dto,
-        mockUser,
-        mockRequest,
-      );
+      const result = await service.updateProduct(id, dto, mockRequest);
 
       expect(mockProductRepository.createProductBundle).toHaveBeenCalled();
-      expect(result.data.id).toBe(id);
+      expect((result.data as TestProduct).id).toBe(id);
     });
 
     it('should archive bundles when isBundle is set to false', async () => {
@@ -188,12 +254,7 @@ describe('ProductService with Zod DTOs', () => {
       });
       mockProductRepository.updateProduct.mockResolvedValue({ id, ...dto });
 
-      const result = await service.updateProduct(
-        id,
-        dto,
-        mockUser,
-        mockRequest,
-      );
+      const result = await service.updateProduct(id, dto, mockRequest);
 
       expect(
         mockProductRepository.archiveProductBundlesByProductId,
@@ -209,7 +270,7 @@ describe('ProductService with Zod DTOs', () => {
         isBundle: true,
       });
 
-      const result = await service.deleteProduct(id, mockUser, mockRequest);
+      const result = await service.deleteProduct(id, mockRequest);
 
       expect(
         mockProductRepository.archiveProductBundlesByProductId,
@@ -225,7 +286,7 @@ describe('ProductService with Zod DTOs', () => {
         isBundle: false,
       });
 
-      const result = await service.deleteProduct(id, mockUser, mockRequest);
+      const result = await service.deleteProduct(id, mockRequest);
 
       expect(
         mockProductRepository.archiveProductBundlesByProductId,
@@ -246,12 +307,14 @@ describe('ProductService with Zod DTOs', () => {
         bundlesAsParent: [{ id: 'bundle-7', items: [{ id: 'item-1' }] }],
       });
 
-      const result = await service.getProductById(id, mockUser, mockRequest);
+      const result = await service.getProductById(id, mockRequest);
 
       // Service returns the product as result.data and should include the include data
-      expect(result.data.id).toBe(id);
-      expect(result.data.bundlesAsParent).toBeDefined();
-      expect(result.data.bundlesAsParent[0].id).toBe('bundle-7');
+      expect((result.data as TestProduct).id).toBe(id);
+      expect((result.data as TestProduct).bundlesAsParent).toBeDefined();
+      expect((result.data as TestProduct).bundlesAsParent![0].id).toBe(
+        'bundle-7',
+      );
     });
   });
 
@@ -271,11 +334,16 @@ describe('ProductService with Zod DTOs', () => {
 
       const result = await service.getList(1, 10);
 
-      expect(result.data.total).toBe(1);
-      expect(result.data.data[0].name).toBe('Product 8');
-      // service includes the `bundlesAsParent` include from repository
-      expect(result.data.data[0].bundlesAsParent).toBeDefined();
-      expect(result.data.data[0].bundlesAsParent[0].id).toBe('bundle-8');
+      expect((result.data as PaginatedProductData).total).toBe(1);
+      expect((result.data as PaginatedProductData).data[0].name).toBe(
+        'Product 8',
+      );
+      expect(
+        (result.data as PaginatedProductData).data[0].bundlesAsParent,
+      ).toBeDefined();
+      expect(
+        (result.data as PaginatedProductData).data[0].bundlesAsParent![0].id,
+      ).toBe('bundle-8');
     });
   });
 
@@ -297,12 +365,11 @@ describe('ProductService with Zod DTOs', () => {
       const result = await service.makeBundle(
         id,
         { name: 'New Bundle', description: 'Bundle description' },
-        mockUser,
         mockRequest,
       );
 
       expect(result.message).toBe('Product converted to bundle successfully');
-      expect(result.data.bundle.id).toBe('bundle-9');
+      expect((result.data as MakeBundleData).bundle.id).toBe('bundle-9');
     });
   });
 });

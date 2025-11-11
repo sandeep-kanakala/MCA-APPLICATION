@@ -1,5 +1,5 @@
-// src/common/repositories/user.repository.ts
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
@@ -12,7 +12,7 @@ export class TenantRepository {
     });
   }
 
-  async createtenant(tenantData) {
+  async createtenant(tenantData: Prisma.TenantCreateInput) {
     return this.prisma.tenant.create({
       data: tenantData,
     });

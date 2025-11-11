@@ -1,8 +1,6 @@
 import {
   BadRequestException,
-  ConflictException,
   Injectable,
-  InternalServerErrorException,
   NotFoundException,
   Inject,
 } from '@nestjs/common';
@@ -11,10 +9,19 @@ import * as winston from 'winston';
 import { Contact, Prisma } from '@prisma/client';
 
 import { ContactCreateRequestDto, ContactUpdateRequestDto } from './dto';
-import { Response, ResponseBuilder, cleanPatchData } from '@/utils';
+import {
+  Response,
+  ResponseBuilder,
+  cleanPatchData,
+  handleError,
+} from '@/utils';
 import { AuthenticatedRequest, RequestWithUser } from '~/interface';
-import { ContactRepository } from '@/infrastructure/repositories/contact.repository';
-import { AccountRepository } from '@/infrastructure/repositories/account.repository';
+import {
+  ContactRepository,
+  AccountRepository,
+} from '@/infrastructure/repositories';
+import { ASC, CREATED_AT, DESC } from '@/config/constants';
+import { AllowedContactSortFields } from '@/config/constants/contact.constants';
 @Injectable()
 export class ContactService {
   constructor(
@@ -30,31 +37,17 @@ export class ContactService {
     const { user } = request;
     this.logger.info(`Creating contact for user: ${user.email}`);
     try {
-      const { accountId, ...data } = contactCreateRequestDto;
+      const { accountId } = contactCreateRequestDto;
       const account = await this.accountRepository.findById(accountId);
       if (!account) {
         throw new BadRequestException(
           'Invalid foreign key reference (AccountId or UserId)',
         );
       }
-      const contactData: Prisma.ContactCreateInput = {
-        ...data,
-        createdBy: { connect: { id: user.id } },
-        updatedBy: { connect: { id: user.id } },
-        tenant: { connect: { id: user.tenantId } },
-        owner: { connect: { id: user.id } },
-        account: { connect: { id: accountId } },
-      };
 
       const createdContact = await this.contactRepository.createContact(
-        contactData,
-        {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-          phone: true,
-        },
+        request,
+        contactCreateRequestDto,
       );
 
       return new ResponseBuilder()
@@ -64,96 +57,170 @@ export class ContactService {
         .build();
     } catch (error: unknown) {
       this.logger.error('Error creating contact', { error });
-      this.handleError(error, 'Error creating contact.');
+      handleError(error, 'Error creating contact.');
     }
   }
 
-  async getAllContactsByTenantId(
-    request: RequestWithUser,
+  async getAllContactsByAccountId(
+    request: AuthenticatedRequest,
     page?: number,
     limit?: number,
+    accountId?: string,
+    isArchived: boolean = false,
+    sortByField?: string,
+    search?: string,
+    fromDate?: Date,
+    toDate?: Date,
+    sortOrder?: string,
   ): Promise<Response> {
     const { user } = request;
-    this.logger.info(`Fetching All contacts for tenant ${user.tenantId}`);
+    this.logger.info(`Fetching all contacts for tenant: ${user.tenantId}`);
 
     try {
       const pageNumber = Math.max(Number(page) || 1, 1);
       const pageSize = Math.max(Number(limit) || 10, 1);
       const skip = (pageNumber - 1) * pageSize;
-
-      const [totalCount, contactsData] = await Promise.all([
-        this.contactRepository.countContactsByTenantId(user.tenantId),
-        this.contactRepository.findContactsByTenantId(
-          user.tenantId,
-          skip,
-          pageSize,
-        ),
-      ]);
-
-      return new ResponseBuilder()
-        .withMessage('Contacts fetched successfully.')
-        .withData({
-          total: totalCount,
-          page: pageNumber,
-          limit: pageSize,
-          totalPages: Math.ceil(totalCount / pageSize),
-          data: contactsData,
-        })
-        .build();
-    } catch (error: unknown) {
-      this.logger.error('Error fetching contact list', { error });
-      this.handleError(error, 'Error fetching contact list.');
-    }
-  }
-
-  async getContactsByAccountId(
-    accountId: string,
-    page?: number,
-    limit?: number,
-  ): Promise<Response> {
-    this.logger.info(`Fetching contacts for account: ${accountId}`);
-
-    try {
-      const pageNumber = Math.max(Number(page) || 1, 1);
-      const pageSize = Math.max(Number(limit) || 10, 1);
-      const skip = (pageNumber - 1) * pageSize;
-
-      const [totalCount, contactsData] = await Promise.all([
-        this.contactRepository.countContactsByAccountId(accountId),
-        this.contactRepository.findContactsByAccountId(
-          accountId,
-          skip,
-          pageSize,
-        ),
-      ]);
-
-      return new ResponseBuilder()
-        .withMessage('Contacts fetched successfully.')
-        .withData({
-          total: totalCount,
-          page: pageNumber,
-          limit: pageSize,
-          totalPages: Math.ceil(totalCount / pageSize),
-          data: contactsData,
-        })
-        .build();
-    } catch (error: unknown) {
-      this.logger.error('Error fetching contact list', { error });
-      this.handleError(error, 'Error fetching contact list.');
-    }
-  }
-
-  async getContactById(id: string, accountId: string): Promise<Response> {
-    this.logger.info(`Fetching contact ID: ${id} for account: ${accountId}`);
-    try {
-      if (!id || typeof id !== 'string') {
-        throw new BadRequestException('Invalid contact ID.');
-      }
-
-      const contact = await this.contactRepository.findByIdAndAccountId(
-        id,
-        accountId,
+      const tenantId = user.tenantId;
+      const cleanAccountId =
+        typeof accountId === 'string' ? accountId.trim() : accountId;
+      const cleanSearch = typeof search === 'string' ? search.trim() : search;
+      const cleanSortByField =
+        typeof sortByField === 'string' ? sortByField.trim() : sortByField;
+      const cleanSortOrder =
+        typeof sortOrder === 'string' ? sortOrder.trim() : sortOrder;
+      const sortField =
+        AllowedContactSortFields.find(
+          (f) => f.toLowerCase() === cleanSortByField?.toLowerCase(),
+        ) || CREATED_AT;
+      const order = cleanSortOrder?.toLowerCase() === ASC ? ASC : DESC;
+      const whereCondition = this.buildWhereAndFilterClauses(
+        cleanSearch,
+        fromDate,
+        toDate,
       );
+      const where = {
+        tenantId,
+        isArchived,
+        ...(cleanAccountId && { accountId: cleanAccountId }),
+        ...whereCondition,
+      };
+      const include: Prisma.ContactInclude = {
+        account: {
+          select: {
+            name: true,
+          },
+        },
+      };
+      const [totalCount, contactsData] = await Promise.all([
+        this.contactRepository.countContacts(where),
+        this.contactRepository.findContacts(
+          sortField,
+          order,
+          skip,
+          pageSize,
+          where,
+          include,
+        ),
+      ]);
+
+      return new ResponseBuilder()
+        .withMessage('Contacts fetched successfully.')
+        .withData({
+          total: totalCount,
+          page: pageNumber,
+          limit: pageSize,
+          totalPages: Math.ceil(totalCount / pageSize),
+          data: contactsData,
+        })
+        .build();
+    } catch (error: unknown) {
+      this.logger.error('Error fetching contacts list', { error });
+      handleError(error, 'Error fetching contacts list.');
+    }
+  }
+  private buildWhereAndFilterClauses(
+    cleanSearch?: string,
+    cleanFromDate?: Date,
+    cleanToDate?: Date,
+  ): Prisma.ContactWhereInput {
+    const searchCondition: Prisma.ContactWhereInput = cleanSearch
+      ? {
+          OR: [
+            {
+              email: {
+                contains: cleanSearch,
+                mode: Prisma.QueryMode.insensitive,
+              },
+            },
+            {
+              phone: {
+                contains: cleanSearch,
+                mode: Prisma.QueryMode.insensitive,
+              },
+            },
+            {
+              firstName: {
+                contains: cleanSearch,
+                mode: Prisma.QueryMode.insensitive,
+              },
+            },
+            {
+              middleName: {
+                contains: cleanSearch,
+                mode: Prisma.QueryMode.insensitive,
+              },
+            },
+            {
+              lastName: {
+                contains: cleanSearch,
+                mode: Prisma.QueryMode.insensitive,
+              },
+            },
+          ],
+        }
+      : {};
+    const filters: Prisma.ContactWhereInput = {
+      ...(cleanFromDate && {
+        createdAt: {
+          gte: cleanFromDate,
+        },
+      }),
+      ...(cleanToDate && {
+        createdAt: {
+          ...(cleanFromDate ? { gte: new Date(cleanFromDate) } : {}),
+          lte: new Date(
+            cleanToDate.setDate(new Date(cleanToDate).getDate() + 1),
+          ),
+        },
+      }),
+    };
+    return {
+      AND: [searchCondition, filters],
+    };
+  }
+
+  async getContactById(id: string): Promise<Response> {
+    this.logger.info(`Fetching contact ID: ${id}`);
+    try {
+      if (!id || typeof id !== 'string')
+        throw new BadRequestException('Invalid contact ID.');
+
+      const include = {
+        account: {
+          select: {
+            name: true,
+            type: true,
+          },
+        },
+        createdBy: {
+          select: {
+            firstName: true,
+            middleName: true,
+            lastName: true,
+          },
+        },
+      };
+      const contact = await this.contactRepository.findById(id, include);
 
       if (!contact) {
         this.logger.warn(`Contact not found: ${id}`);
@@ -166,7 +233,7 @@ export class ContactService {
         .build();
     } catch (error: unknown) {
       this.logger.error(`Error fetching contact ID: ${id}`, { error });
-      this.handleError(error, 'Error fetching contact by ID.');
+      handleError(error, 'Error fetching contact by ID.');
     }
   }
 
@@ -178,9 +245,8 @@ export class ContactService {
     const { user } = request;
     this.logger.info(`Updating contact ID: ${id} by user: ${user.email}`);
     try {
-      if (!id || typeof id !== 'string' || id.trim() === '') {
+      if (!id || typeof id !== 'string' || id.trim() === '')
         throw new BadRequestException('Invalid contact ID.');
-      }
 
       const existingContact = await this.contactRepository.findById(id);
       if (!existingContact) {
@@ -191,15 +257,15 @@ export class ContactService {
         contactUpdateDto,
         existingContact,
       );
-      if (!changes) {
+      if (!changes.isChanged) {
         return new ResponseBuilder()
-          .withStatusCode(204)
+          .withStatusCode(200)
           .withMessage('no changes found')
           .withData(contactUpdateDto)
           .build();
       }
       const updatedContact = await this.contactRepository.updateContact(id, {
-        ...changes,
+        ...changes.cleaned,
         updatedBy: { connect: { id: user.id } },
       });
 
@@ -209,7 +275,7 @@ export class ContactService {
         .build();
     } catch (error: unknown) {
       this.logger.error(`Error updating contact ID: ${id}`, { error });
-      this.handleError(error, 'Error updating contact.');
+      handleError(error, 'Error updating contact.');
     }
   }
 
@@ -226,44 +292,22 @@ export class ContactService {
         throw new NotFoundException('Contact not found.');
       }
 
-      await this.contactRepository.softDeleteContact(id, {
+      await this.contactRepository.archieveContact(id, {
         archivedAt: new Date().toISOString(),
         isArchived: true,
         updatedBy: { connect: { id: user.id } },
       });
-
       return new ResponseBuilder()
+        .withStatusCode(204)
         .withMessage('Contact deleted successfully.')
         .build();
     } catch (error: unknown) {
       this.logger.error(`Error deleting contact ID: ${id}`, { error });
-      this.handleError(error, 'Error deleting contact.');
+      handleError(error, 'Error deleting contact.');
     }
   }
 
   async findOne(id: string) {
     return await this.contactRepository.findById(id);
-  }
-
-  private handleError(error: unknown, message: string): never {
-    if (error instanceof BadRequestException) throw error;
-    if (error instanceof ConflictException) throw error;
-    if (error instanceof NotFoundException) throw error;
-
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === 'P2003') {
-        throw new BadRequestException(
-          'Invalid foreign key reference (AccountId or UserId)',
-        );
-      }
-
-      if (error.code === 'P2002') {
-        throw new ConflictException(
-          'A contact with this email already exists in the tenant.',
-        );
-      }
-    }
-
-    throw new InternalServerErrorException(message || 'Internal server error.');
   }
 }

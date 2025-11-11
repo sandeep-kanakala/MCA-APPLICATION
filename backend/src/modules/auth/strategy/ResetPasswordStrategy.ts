@@ -34,7 +34,7 @@ export class ResetPasswordJwtStrategy extends PassportStrategy(
     tenantId: string;
     type: string;
   }) {
-    if (payload.type !== 'RESET_PASSWORD' && payload.type !== 'LOGIN') {
+    if (payload.type !== 'RESET_PASSWORD') {
       throw new UnauthorizedException('Token not valid for password reset');
     }
 
